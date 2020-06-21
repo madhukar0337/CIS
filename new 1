@@ -1,0 +1,94 @@
+FROM centos/python-35-centos7:latest
+
+USER root
+
+
+# Install required RPMs and ensure that the packages were installed
+RUN yum install -y java-1.8.0-openjdk wget \
+    && yum clean all && rm -rf /var/cache/yum \
+    && rpm -q java-1.8.0-openjdk wget 
+	
+
+RUN mkdir -p /mnt/bucket-test
+RUN yum -y install epel-release
+RUN yum -y install s3fs-fuse
+
+# Add all artifacts to the /tmp/artifacts
+# directory
+COPY \
+    spark-2.4.0-bin-hadoop2.7.tgz \
+    /tmp/artifacts/
+
+
+# Environment variables
+ENV \
+    JBOSS_IMAGE_NAME="radanalyticsio/openshift-spark" \
+    JBOSS_IMAGE_VERSION="2.4-latest" \
+    PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/spark/bin" \
+    SCL_ENABLE_CMD="scl enable rh-python36" \
+    SPARK_HOME="/opt/spark" \
+    SPARK_INSTALL="/opt/spark-distro" \
+    STI_SCRIPTS_PATH="/usr/libexec/s2i" 
+
+# Labels
+LABEL \
+      io.cekit.version="2.2.7"  \
+      io.openshift.s2i.scripts-url="image:///usr/libexec/s2i"  \
+      maintainer="manoj.moka@experian.com" \
+      name="experian-spark"  \
+      org.concrt.version="2.2.7"  \
+      sparkversion="2.4.0"  \
+      version="2.4-latest" 
+
+# Add scripts used to configure the image
+COPY modules /tmp/scripts
+
+# Custom scripts
+USER root
+RUN [ "bash", "-x", "/tmp/scripts/common/install" ]
+
+
+USER root
+RUN [ "bash", "-x", "/tmp/scripts/metrics/install" ]
+
+USER root
+RUN [ "bash", "-x", "/tmp/scripts/spark/install" ]
+
+USER root
+RUN [ "bash", "-x", "/tmp/scripts/s2i/install" ]
+
+USER root
+RUN [ "bash", "-x", "/tmp/scripts/python36/install" ]
+
+USER root
+RUN rm -rf /tmp/scripts
+USER root
+RUN rm -rf /tmp/artifacts
+
+# Modify permission for Openshift platform
+RUN chgrp -R 0 /tmp/* && \
+    chmod -R g=u /tmp/*
+RUN chmod g=u /etc/passwd
+
+
+USER 1001
+
+EXPOSE 8080 80 443 7077
+
+USER root
+#CMD echo AKIAJIS2RC5HA457U4PA:QNvNBp/Nqh1qEqn6bsUSigWv/0uQHSuZ4zua969+ > /etc/passwd-s3fs && \
+#    chmod 0400 /etc/passwd-s3fs && \
+ #   /usr/bin/s3fs openshiftspark /mnt/bucket-test -f -o endpoint=Asia Pacific(Mumbai),allow_other,use_cache=/tmp,max_stat_cache_size=1000,stat_cache_expire=900,retries=5,connect_timeout=10	
+
+# Specify the working directory
+WORKDIR /tmp
+
+ENTRYPOINT ["/entrypoint"]
+
+CMD ["/launch.sh"]
+ 
+
+
+docker --insecure-registry=registryname -p "encrypted passsword" registryname
+docker --insecure-registry=docker-registry-default.apps.appcanvas.net login -p 2CGqCVSsgpTL6iEt3R5QD2x-v99mueiDFSrDXfCmw74 docker-registry-default.apps.appcanvas.net
+/etc/docker/certs.d/docker-registry-default.apps.appcanvas.net

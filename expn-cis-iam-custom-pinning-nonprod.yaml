@@ -1,0 +1,86 @@
+#Experian CIS - Ascend DevOps Account
+#IAM Base Setup Template
+#Jerome Chadee
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates IAM Roles, Groups and Polices for CIS Organization Member Accounts
+
+Parameters:
+#  OktaMasterDeployment:
+#    Type: String
+#    Description: Determines if Okta Master Account - To create additional policies
+#    Default: "false"
+  DevSecOpsAccountNumber:
+    Description: AWS Account Number for DevSecOps Account
+    Type: String
+    MaxLength: 12
+    MinLength: 12
+    AllowedPattern: "[0-9]+"
+    Default: "528150397796"
+  MemberAccountNumber:
+    Description: AWS Account Number for Member Account
+    Type: String
+    MaxLength: 12
+    MinLength: 12
+    AllowedPattern: "[0-9]+"
+    Default: "796796542496"
+  MemberAccountAlias:
+    Description: AWS Account Alais - Example, PROD, DEV, AcctReview, DevSecOps, Security
+    Type: String
+  CMKARN:
+    Description: ARN of the KMS CMK creates in DevSecOps account
+    Type: String
+    Default: "arn:aws:kms:us-east-1:528150397796:key/4acb996c-a8b6-438f-9e87-53b3b04078cf"
+#Conditions:
+#  IsOtkaMasterAccount: !Equals [!Ref OktaMasterDeployment, true]
+Resources:
+#ROLES
+#  KafkaAdminRole:
+#    Type: AWS::IAM::Role
+#    Properties:
+#      RoleName: expn-cis-kafka-admin
+#      Path: "/"
+#USERS
+  KafkaUser:
+    Type: AWS::IAM::User
+    Properties:
+      Groups:
+        - Service-Accounts
+#      ManagedPolicyArns:
+#        - arn:aws:iam::aws:policy/IAMReadOnlyAccess
+      Path: "/"
+      UserName: SA01KAFKA
+
+#POLICIES expn-cis-codepipeline-full-access
+  KafkaAdminPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Metadata:
+     cfn_nag:
+       rules_to_suppress:
+         - id: F12
+           reason: "Policy used to Get EC2 logs and manage using SSM docs"
+         - id: F5
+           reason: "Policy used to Get EC2 logs and manage using SSM docs"
+    Properties:
+      ManagedPolicyName: expn-cis-kafka-admin
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: CWSSMAccess
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:List*
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:*MultipartUpload*
+            Resource:
+              - arn:aws:s3:::expn-cis-adi-pinning-dev-*
+              - arn:aws:s3:::expn-cis-adi-pinning-dev-*/*
+      Users:
+        -
+          !Ref KafkaUser
+Outputs:
+  StackName:
+      Description: Name of the current stack used for client CloudWatch Log Data Collection
+      Value: !Ref 'AWS::StackName'

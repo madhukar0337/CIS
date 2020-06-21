@@ -1,0 +1,20 @@
+{
+    "Rules": [
+        {
+            "Filter": {
+                "Prefix": ""
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 30,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "Move to Glacier after 30 days-s3-execution"
+        }
+    ]
+}

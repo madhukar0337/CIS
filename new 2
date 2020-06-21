@@ -1,0 +1,59 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [                                                         
+                "s3:ListBucket",
+                "s3:GetObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-account-review-usaa-sandbox",                                    
+                "arn:aws:s3:::expn-cis-account-review-usaa-sandbox/*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:PutObject",
+                "s3:PutObjectAcl"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-account-review-sandbox-usaa",
+                "arn:aws:s3:::expn-cis-account-review-sandbox-usaa/*"
+            ]
+        }                                                                                         
+    ]
+}
+#########################################################################################
+aws s3 sync s3://source bucket name  s3://Destination bucket name --     test-sync-object
+###########################################################################
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:GetObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::SOURCE_BUCKET_NAME",
+                "arn:aws:s3:::SOURCE_BUCKET_NAME/*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:PutObject",
+                "s3:PutObjectAcl"
+            ],
+            "Resource": [
+                "arn:aws:s3:::DESTINATION_BUCKET_NAME",
+                "arn:aws:s3:::DESTINATION_BUCKET_NAME/*"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,136 @@
+#Jerome Chadee
+#RDS for EMR - Ascend Analytical Sandbox
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates a RDS instance for EMR Hive metastore
+Parameters:
+  pDBAllocatedStorage:
+    ConstraintDescription: must be between 5 and 1024Gb.
+    #MySQL is 60GB
+    Default: '200'
+    Description: The size of the database (Gb)
+    MaxValue: '1024'
+    MinValue: '5'
+    Type: Number
+  pDBClass:
+    ConstraintDescription: must select a valid database instance type.
+    Default: 'db.t3.micro'
+    Description: Database instance class
+    Type: String
+  pDBName:
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+    Default: 'experianusaa'
+    Description: The database name
+    MaxLength: '64'
+    MinLength: '1'
+    Type: String
+  pDBInstanceName:
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9\-]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+    Default: 'expn-cis-account-review-prod-mysql'
+    Description: The database name
+    MaxLength: '64'
+    MinLength: '1'
+    Type: String
+  pDBEngine:
+    Type: String
+    Default: 'mysql'
+  pDBPassword:
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: RDSEMRPassword
+  pDBUser:
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: RDSEMRUser
+#  pSubnetRDS1:
+#    Description: Subnet ID 1 for creating the RDS instance
+#    Type: AWS::EC2::Subnet::Id
+#  pSubnetRDS2:
+#    Description: Subnet ID 2 for creating the RDS instance
+#    Type: AWS::EC2::Subnet::Id
+#  pVPC:
+#    Description: VPC ID for creating the RDS instance
+#    Type: AWS::EC2::VPC::Id
+  pVPCCIDR:
+    Description: VPC CIDR
+    Type: String
+    Default: '172.16.8.0/22' 
+Resources:
+  rEMRHiveMetastore:
+    Metadata:
+     cfn_nag:
+       rules_to_suppress:
+         - id: F23
+           reason: "Password stored in SSM"
+         - id: F24
+           reason: "Username stored in SSM"
+         - id: F22
+           reason: "This is a general public access"
+    Properties:
+      AllocatedStorage: !Ref 'pDBAllocatedStorage'
+      DBInstanceIdentifier: !Ref 'pDBInstanceName'
+      DBInstanceClass: !Ref 'pDBClass'
+      DBName: !Ref 'pDBName'
+      DBSubnetGroupName: !Ref 'rMyDBSubnetGroup'
+      Engine: !Ref 'pDBEngine'
+      EngineVersion: 5.6.44
+      LicenseModel: general-public-license
+      MasterUserPassword: !Ref 'pDBPassword'
+      MasterUsername: !Ref 'pDBUser'
+      Tags:
+      - Key: Name
+        Value: expn-cis-account-review-prod-mysql
+      - Key: Environment
+        Value: Production
+      - Key: Product
+        Value: AscendAccountReview
+      VPCSecurityGroups:
+      - !Ref 'rMyVPCSecurityGroup'
+    Type: AWS::RDS::DBInstance
+  rMyDBSubnetGroup:
+    Properties:
+      DBSubnetGroupDescription: Subnets available for the RDS DB Instance
+      SubnetIds:
+      - 'subnet-39eac164'
+      - 'subnet-3a122715'
+      - 'subnet-608d722a'
+      - 'subnet-997c69fd'
+    Type: AWS::RDS::DBSubnetGroup
+  rMyVPCSecurityGroup:
+    Properties:
+      GroupDescription: Security group for RDS DB Instance.
+      SecurityGroupIngress:
+      - FromPort: '3306'
+        IpProtocol: tcp
+        CidrIp: !Ref 'pVPCCIDR'
+        ToPort: '3306'
+      VpcId: !ImportValue EMRVPC
+    Type: AWS::EC2::SecurityGroup
+  rRDSEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref rMyVPCSecurityGroup
+      IpProtocol: -1
+      FromPort: '-1'
+      ToPort: '-1'
+      CidrIp: "0.0.0.0/0"
+Outputs:
+  oHiveMetastoreJDBCConnectionString:
+    Description: JDBC connection string hive metastore
+    Value: !Join ['', ['jdbc:mysql://', !GetAtt [rEMRHiveMetastore, Endpoint.Address],
+        ':', !GetAtt [rEMRHiveMetastore, Endpoint.Port], ':', !Ref 'pDBName']]
+  oHiveMetastoreHost:
+    Description: Hive metastore Mysql Host DNS
+    Value: !GetAtt [rEMRHiveMetastore, Endpoint.Address]
+    Export:
+      Name: "HiveMetastoreHost"
+  oHiveMetastorePort:
+    Description: Hive metastore Mysql Host Port
+    Value: !GetAtt [rEMRHiveMetastore, Endpoint.Port]
+    Export:
+      Name: "HiveMetastorePort"
+  oHiveMetastoreDBUsername:
+    Description: Hive metastore DB username
+    Value: !Ref 'pDBUser'
+    Export:
+      Name: "HiveMetastoreDBUsername"
+

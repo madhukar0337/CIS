@@ -1,0 +1,133 @@
+#Creates S3 bucket and retains it if stack is destroyed. Also, if the bucket exist, allows user to create new stack to update the policy.
+Description: Stack to create and manage s3 buckets
+Parameters:
+  MemberAccountNumber:
+    Description: AWS Account Number for Member Account
+    Type: String
+    MaxLength: 12
+    MinLength: 12
+    AllowedPattern: "[0-9]+"
+    Default: '902577807644'
+  pCreateS3Bucket:
+    Description: Set to false if the bucket already exist
+    Default: false
+    AllowedValues:
+      - false
+      - true
+    Type: String
+  pS3BucketName:
+    Description: S3Bucket Name
+    Type: String
+    Default: 'expn-cis-account-review-prod-s3-output'
+Conditions:
+  cIsAnewBucket: !Equals [!Ref pCreateS3Bucket, true]
+Resources:
+  rS3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Condition: cIsAnewBucket
+    Properties:
+      BucketName: !Ref pS3BucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+  rS3BucketPRODPolicy:
+    Type: AWS::S3::BucketPolicy
+    DeletionPolicy: Retain
+    Properties:
+      Bucket: !Ref pS3BucketName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Id: !Sub S3BucketPolicy${pS3BucketName}
+        Statement:
+        - Sid: S3Access
+          Effect: Allow
+          Principal:
+            AWS:
+              - !Sub arn:aws:iam::${MemberAccountNumber}:role/EMR_EC2_DefaultRole
+              - !Sub arn:aws:iam::${MemberAccountNumber}:role/AccountReviewLambdaAutomationRole
+          Action:
+            - s3:List*
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+          Resource:
+            - !Sub arn:aws:s3:::${pS3BucketName}
+            - !Sub arn:aws:s3:::${pS3BucketName}/*
+        - Sid: AcctRevDevEMRAccess
+          Effect: Allow
+          Principal:
+            AWS:
+              - arn:aws:iam::121922704398:role/EMR_EC2_DefaultRolealldev
+          Action:
+            - s3:List*
+            - s3:GetObject
+            - s3:PutObject
+          Resource:
+            - !Sub arn:aws:s3:::${pS3BucketName}
+            - !Sub arn:aws:s3:::${pS3BucketName}/*
+        - Sid: ListAccess
+          Effect: Allow
+          Principal:
+            AWS:
+              - !Sub arn:aws:iam::${MemberAccountNumber}:role/sts-account-review
+              - !Sub arn:aws:iam::${MemberAccountNumber}:user/SA02AREV
+          Action:
+            - s3:List*
+          Resource:
+            - !Sub arn:aws:s3:::${pS3BucketName}
+        - Sid: GetAccess
+          Effect: Allow
+          Principal:
+            AWS:
+              - !Sub arn:aws:iam::${MemberAccountNumber}:role/sts-account-review
+              - !Sub arn:aws:iam::${MemberAccountNumber}:user/SA02AREV
+          Action:
+            - s3:GetObject*
+          Resource:
+            - !Sub arn:aws:s3:::${pS3BucketName}/*
+        - Sid: DenyIncorrectEncryptionHeader
+          Effect: Deny
+          Principal: "*"
+          Action: s3:PutObject
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            StringNotEquals:
+              s3:x-amz-server-side-encryption: AES256
+        - Sid: DenyUnEncryptedObjectUploads
+          Effect: Deny
+          Principal: "*"
+          Action: s3:PutObject
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            'Null':
+              s3:x-amz-server-side-encryption: 'true'
+        - Sid: DenyNonSSLAccess
+          Effect: Deny
+          Principal: "*"
+          Action: s3:*
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            Bool:
+              aws:SecureTransport: 'false'
+        - Sid: AllowedPrincipals
+          Effect: Deny
+          Principal: "*"
+          Action: s3:*
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            StringNotLike:
+              aws:userId:
+              - root
+              - AROAJBEUCM6KENRW6DV3K:*
+              - AROAJJF6N45DN77T24HX4:*
+              - AROAI7S42YLFBRHWHKVBS:*
+              - AROAI7VBWBZNR4XVIEW5G:*
+              - AROAJ3ETN3K6A6KWKWJL2:*
+              - AROARYYZI2QHEPUBHCVG4:*
+              - AROA5EJOUMEOB4YHJQW4B:*
+              - AROA5EJOUMEOAJFEYMGVN:*
+              - AIDAIPFJN2UPXN6VTSR44

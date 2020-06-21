@@ -1,0 +1,190 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "autoscaling:Describe*",
+        "aws-portal:ViewBilling",
+        "aws-portal:ViewUsage",
+        "cloudformation:ListStacks",
+        "cloudformation:ListStackResources",
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:DescribeStackResources",
+        "cloudformation:GetTemplate",
+        "cloudfront:Get*",
+        "cloudfront:List*",
+        "cloudtrail:DescribeTrails",
+        "cloudtrail:GetEventSelectors",
+        "cloudtrail:ListTags",
+        "cloudwatch:Describe*",
+        "cloudwatch:Get*",
+        "cloudwatch:List*",
+        "config:Get*",
+        "config:Describe*",
+        "config:Deliver*",
+        "config:List*",
+        "cur:Describe*",
+        "dms:Describe*",
+        "dms:List*",
+        "dynamodb:DescribeTable",
+        "dynamodb:List*",
+        "ec2:Describe*",
+        "ec2:GetReservedInstancesExchangeQuote",
+        "ecs:List*",
+        "ecs:Describe*",
+        "elasticache:Describe*",
+        "elasticache:ListTagsForResource",
+        "elasticbeanstalk:Check*",
+        "elasticbeanstalk:Describe*",
+        "elasticbeanstalk:List*",
+        "elasticbeanstalk:RequestEnvironmentInfo",
+        "elasticbeanstalk:RetrieveEnvironmentInfo",
+        "elasticfilesystem:Describe*",
+        "elasticloadbalancing:Describe*",
+        "elasticmapreduce:Describe*",
+        "elasticmapreduce:List*",
+        "es:List*",
+        "es:Describe*",
+        "firehose:ListDeliveryStreams",
+        "firehose:DescribeDeliveryStream",
+        "iam:List*",
+        "iam:Get*",
+        "iam:GenerateCredentialReport",
+        "kinesis:Describe*",
+        "kinesis:List*",
+        "kms:DescribeKey",
+        "kms:GetKeyRotationStatus",
+        "kms:ListKeys",
+        "lambda:List*",
+        "logs:Describe*",
+        "redshift:Describe*",
+        "route53:Get*",
+        "route53:List*",
+        "rds:Describe*",
+        "rds:ListTagsForResource",
+        "s3:GetBucketAcl",
+        "s3:GetBucketLocation",
+        "s3:GetBucketLogging",
+        "s3:GetBucketPolicy",
+        "s3:GetBucketTagging",
+        "s3:GetBucketVersioning",
+        "s3:GetBucketWebsite",
+        "s3:List*",
+        "sagemaker:Describe*",
+        "sagemaker:List*",
+        "savingsplans:DescribeSavingsPlans",
+        "sdb:GetAttributes",
+        "sdb:List*",
+        "ses:Get*",
+        "ses:List*",
+        "sns:Get*",
+        "sns:List*",
+        "sqs:GetQueueAttributes",
+        "sqs:ListQueues",
+        "storagegateway:List*",
+        "storagegateway:Describe*",
+        "workspaces:Describe*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteSnapshot"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteVolume"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:TerminateInstances"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:StartInstances"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:StopInstances"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RebootInstances"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:ModifyReservedInstances"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeReservedInstancesOfferings",
+        "ec2:PurchaseReservedInstancesOffering",
+        "sts:GetFederationToken"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "rds:DescribeReservedDBInstancesOfferings",
+        "rds:PurchaseReservedDBInstancesOffering"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "lambda:InvokeFunction"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:ReleaseAddress"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateSnapshot"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:ModifyReservedInstances",
+        "ec2:DescribeReservedInstancesOfferings",
+        "ec2:GetReservedInstancesExchangeQuote",
+        "ec2:AcceptReservedInstancesExchangeQuote"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

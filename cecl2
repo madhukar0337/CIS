@@ -1,0 +1,95 @@
+#!groovy
+pipeline {
+	agent {
+		node {
+		    //label   'New-Linux'
+		    label 'DEV-L64-B3||DEV-L64-B4'
+			//label 'DEV-L64-B1||DEV-L64-B2||DEV-L64-B3||DEV-L64-B4||DEV-L64-B5||DEV-L64-B6||DEV-L64-B7'
+		}
+	}
+
+	environment {
+		def resource_path = "${RESOURCE_PATH}"
+		def project_env = "${ENV}"
+		def service = "${SERVICE}"
+        def file_name = "${FILE_NAME}"
+        def arf = "${ARF}"
+        def email = "${EMAIL}"
+        def file_splitted = ""
+        def report_path = ""
+        def apigee = "${APIGEE}"
+        def apigee_user = "${APIGEE_USER}"
+        def apigee_password = "${APIGEE_PASSWORD}"
+        def htmlSummary = ""
+        def build_ok = true
+	}
+
+	stages {
+		
+			
+
+
+	
+	
+
+
+	stage('Connect to EMR and Clone repo') {
+            steps {
+			sh """#!/bin/bash
+			chmod 400  ${env.WORKSPACE}/cecl.pem  
+			echo "rm -rf *.*"
+			echo "mkdir -p "${Release}""
+			echo "step 0"
+			ssh -i ${env.WORKSPACE}/cecl.pem  -o StrictHostKeyChecking=no -T hadoop@10.28.188.216  "rm -rf r*;ls"
+			sleep 30s
+			ssh -i ${env.WORKSPACE}/cecl.pem  -o StrictHostKeyChecking=no -T hadoop@10.28.188.216  "hostname;whoami;pwd;mkdir -p "${Release}";pwd;cd "${Release}";pwd"
+			sleep 30s
+			echo "step 1"
+			ssh -i ${env.WORKSPACE}/cecl.pem  -o StrictHostKeyChecking=no -T hadoop@10.28.188.216  "hostname;whoami;pwd;cd "${Release}";pwd;git -c http.sslVerify=false clone https://c00511a:Enriqu40.@167.107.237.91/scm/oc/cecl-model-development.git;pwd"
+            sleep 290s
+			echo "step 2"
+			ssh -i ${env.WORKSPACE}/cecl.pem  -o StrictHostKeyChecking=no -T hadoop@10.28.188.216  "hostname;whoami;pwd;cd "${Release}";pwd;cd cecl-model-development;pwd;git config http.sslVerify false"
+            sleep 30s
+			echo "step 3"
+			ssh -i ${env.WORKSPACE}/cecl.pem  -o StrictHostKeyChecking=no -T hadoop@10.28.188.216  "hostname;whoami;pwd;cd "${Release}";pwd;cd cecl-model-development;pwd;python3 --version;pwd"
+            sleep 30s
+			echo "step 4"
+			ssh -i ${env.WORKSPACE}/cecl.pem  -o StrictHostKeyChecking=no -T hadoop@10.28.188.216  "hostname;whoami;pwd;cd "${Release}";pwd;cd cecl-model-development;pwd;python3 -m venv venv && source venv/bin/activate;tar xzf vendor/dependencies.tgz && pip install loan_default_modeling-0.2.12.tar.gz && pip install spowrk-0.5.1.tar.gz"
+            sleep 290s
+			echo "step 5"
+			ssh -i ${env.WORKSPACE}/cecl.pem  -o StrictHostKeyChecking=no -T hadoop@10.28.188.216  "hostname;whoami;pwd;cd "${Release}";pwd;cd cecl-model-development;pwd;source venv/bin/activate;python -m pip install -r requirements.txt;spowrk --settings conf/cluster-settings-fixed-executors.ini execute deploy.py" sleep 290s
+			sleep 290s
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			"""
+			
+		}
+	}
+	
+	stage('change dashboard'){
+	       steps{
+	         build job: 'CISDevSecOps/automationcecl', parameters: [
+					string(name: 'Identifier', value: "${Identifier}"), 
+					string(name: 'DeployedTo', value: "${DeployedTo}"), 
+					string(name: 'GitCommitBranch', value: "${GitCommitBranch}"), 
+					string(name: 'Revisions', value: "${Revisions}")
+					]}
+	}
+	}
+
+	
+
+		
+	}
+
+

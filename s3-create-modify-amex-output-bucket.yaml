@@ -1,0 +1,152 @@
+#Jerome Chadee
+#Creates S3 bucket and retains it if stack is destroyed. Also, if the bucket exist, allows user to create new stack to update the policy.
+Description: Stack to create and manage s3 buckets
+Parameters:
+  pCreateS3Bucket:
+      Description: Set to false if the bucket already exist
+      Default: false
+      AllowedValues:
+        - false
+        - true
+      Type: String
+  pS3BucketName:
+      Description: S3Bucket Name
+      Type: String
+      Default: 'expn-cis-us-amex-output'
+  pRestrictByVPC:
+      Default: false
+      Description: VPC to restrict S3 Access to
+      AllowedValues:
+        - false
+        - true
+      Type: String
+  pVPCId:
+      Description: VPC to restrict S3 Access to
+      Type: String
+Conditions:
+  cIsAnewBucket: !Equals [!Ref pCreateS3Bucket, true]
+  cRestrictByVPCTrue: !Equals [!Ref pRestrictByVPC, true]
+  cRestrictByVPCFalse: !Equals [!Ref pRestrictByVPC, false]
+Resources:
+  rS3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Condition: cIsAnewBucket
+    Properties:
+      BucketName: !Ref pS3BucketName
+  rS3BucketPolicyWithVPCPROD:
+    Type: AWS::S3::BucketPolicy
+    DeletionPolicy: Retain
+    Condition: cRestrictByVPCTrue
+    Properties:
+      Bucket: !Ref pS3BucketName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Id: !Sub S3BucketPolicy${pS3BucketName}
+        Statement:
+        #Restrict by VPC
+        - Sid: RestrictToVPC
+          Effect: Deny
+          Principal: "*"
+          Action: s3:*
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            StringNotEquals:
+              aws:sourceVpc: !Ref pVPCId
+        - Sid: DenyIncorrectEncryptionHeader
+          Effect: Deny
+          Principal: "*"
+          Action: s3:PutObject
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            StringNotEquals:
+              s3:x-amz-server-side-encryption: AES256
+        - Sid: DenyUnEncryptedObjectUploads
+          Effect: Deny
+          Principal: "*"
+          Action: s3:PutObject
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            'Null':
+              s3:x-amz-server-side-encryption: 'true'
+        - Sid: DenyNonSSLAccess
+          Effect: Deny
+          Principal: "*"
+          Action: s3:*
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            Bool:
+              aws:SecureTransport: 'false'
+        - Sid: RestrictToUsers
+          Effect: Deny
+          Principal: "*"
+          Action: s3:*
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            StringNotLike:
+              aws:userId:
+              - '215308655391'
+              #AWS-AscendAmexAdmin
+              - AROAJ32JD5JBW2CVQUFXM:*
+              #m03104a
+              - AIDAIW7ZMN64CJSO6VG3Q
+              #AWS-AmexAdmins
+              - AROAIZOCAGLO5H77MMVDY:*
+              #AWS-AmexAnalyst
+              - AROAJX67GGI3WPZC7ROFS:*
+              #EMR_EC2_DefaultRole
+              - AROAJHD3I36FTLGB4UJXY:*
+
+  rS3BucketPRODPolicy:
+    Type: AWS::S3::BucketPolicy
+    DeletionPolicy: Retain
+    Condition: cRestrictByVPCFalse
+    Properties:
+      Bucket: !Ref pS3BucketName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Id: !Sub S3BucketPolicy${pS3BucketName}
+        Statement:
+        - Sid: DenyIncorrectEncryptionHeader
+          Effect: Deny
+          Principal: "*"
+          Action: s3:PutObject
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            StringNotEquals:
+              s3:x-amz-server-side-encryption: AES256
+        - Sid: DenyUnEncryptedObjectUploads
+          Effect: Deny
+          Principal: "*"
+          Action: s3:PutObject
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            'Null':
+              s3:x-amz-server-side-encryption: 'true'
+        - Sid: DenyNonSSLAccess
+          Effect: Deny
+          Principal: "*"
+          Action: s3:*
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            Bool:
+              aws:SecureTransport: 'false'
+        - Sid: RestrictToUsers
+          Effect: Deny
+          Principal: "*"
+          Action: s3:*
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            StringNotLike:
+              aws:userId:
+              - '215308655391'
+              #AWS-AscendAmexAdmin
+              - AROAJ32JD5JBW2CVQUFXM:*
+              #m03104a
+              - AIDAIW7ZMN64CJSO6VG3Q
+              #AWS-AmexAdmins
+              - AROAIZOCAGLO5H77MMVDY:*
+              #AWS-AmexAnalyst
+              - AROAJX67GGI3WPZC7ROFS:*
+              #EMR_EC2_DefaultRole
+              - AROAJHD3I36FTLGB4UJXY:*

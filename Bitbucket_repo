@@ -1,0 +1,13 @@
+git add
+git add --all
+git commit -m "firstcommit"
+git commit -m "first commit"
+git config --global user.name "Ponnala, Madhukar"
+git config --global user.email "Madhukar.Ponnala@experian.com"
+git commit -m "firstcommit"
+git remote add origin https://bitbucketglobal.experian.local/scm/~c62567a/openshift-emr.git
+git remote add origin https://bitbucketglobal.experian.local/scm/~c62567a/openshift-emr.gitc
+ssh://git@bitbucketglobal.experian.local/~c62567a/openshift-emr.git
+git remote add origin ssh://git@bitbucketglobal.experian.local/~c62567a/openshift-emr.git
+https://bitbucketglobal.experian.local/scm/~c62567a/openshift-emr.git
+git remote set-url ssh://git@bitbucketglobal.experian.local/~c62567a/openshift-emr.git

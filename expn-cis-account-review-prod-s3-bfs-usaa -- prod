@@ -1,0 +1,143 @@
+{
+    "Version": "2012-10-17",
+    "Id": "S3BucketPolicyFull",
+    "Statement": [
+        {
+            "Sid": "EMRS3Access",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::902577807644:role/EMR_EC2_DefaultRole"
+            },
+            "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:List*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-bfs-usaa",
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-bfs-usaa/*"
+            ]
+        },
+        {
+            "Sid": "EMRDevGetS3Access",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::121922704398:role/EMR_EC2_DefaultRolealldev"
+            },
+            "Action": [
+                "s3:GetObject",
+                "s3:List*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-bfs-usaa",
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-bfs-usaa/*"
+            ]
+        },
+        {
+            "Sid": "EMRDevPutS3Access",
+            "Effect": "Deny",
+            "Principal": {
+                "AWS": "arn:aws:iam::121922704398:role/EMR_EC2_DefaultRolealldev"
+            },
+            "Action": "s3:PutObject",
+            "Resource": [
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-bfs-usaa",
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-bfs-usaa/*"
+            ],
+            "Condition": {
+                "StringNotEquals": {
+                    "s3:x-amz-acl": "bucket-owner-full-control"
+                }
+            }
+        },
+        {
+            "Sid": "STSExperianAccessInputPrefix",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::399127776771:user/GFT_S3_Access"
+            },
+            "Action": [
+                "s3:List*",
+                "s3:GetObject",
+                "s3:PutObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-bfs-usaa",
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-bfs-usaa/*"
+            ],
+            "Condition": {
+                "IpAddress": {
+                    "aws:SourceIp": [
+                        "205.174.34.7/32",
+                        "167.107.191.217/32",
+                        "167.107.96.46/32"
+                    ]
+                }
+            }
+        },
+        {
+            "Sid": "STSExperianAccessOutputPrefix",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::399127776771:user/GFT_S3_Access"
+            },
+            "Action": [
+                "s3:List*",
+                "s3:GetObject*",
+                "s3:DeleteObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-bfs-usaa/daily-scoring-files/*",
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-bfs-usaa/preselect/cc/pin-scoring-files/*",
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-bfs-usaa/preselect/cl/pin-scoring-files/*",
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-bfs-usaa/accountManagement/daily-pinning-files/*",
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-bfs-usaa"
+            ],
+            "Condition": {
+                "IpAddress": {
+                    "aws:SourceIp": [
+                        "205.174.34.7/32",
+                        "167.107.191.217/32",
+                        "167.107.96.46/32"
+                    ]
+                }
+            }
+        },
+        {
+            "Sid": "DenyIncorrectEncryptionHeader",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::expn-cis-account-review-prod-s3-bfs-usaa/*",
+            "Condition": {
+                "StringNotEquals": {
+                    "s3:x-amz-server-side-encryption": "AES256"
+                }
+            }
+        },
+        {
+            "Sid": "DenyUnEncryptedObjectUploads",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::expn-cis-account-review-prod-s3-bfs-usaa/*",
+            "Condition": {
+                "Null": {
+                    "s3:x-amz-server-side-encryption": "true"
+                }
+            }
+        },
+        {
+            "Sid": "DenyNonSSLAccess",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-account-review-prod-s3-bfs-usaa/*",
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "false"
+                }
+            }
+        }
+    ]
+}

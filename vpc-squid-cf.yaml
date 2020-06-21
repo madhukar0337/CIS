@@ -1,0 +1,359 @@
+#Author: Jerome Chadee
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VPC network infrastructure for Squid Proxy
+Parameters:
+  pVPCCIDR:
+    Description: CIDR of Private Subnet
+    Type: String
+    Default: 172.16.13.0/26
+  pPeerVPC:
+    Description: True if we want to Peer the new VPC
+    Type: String
+    Default: false
+  pEMRVPCCIDR:
+    Description: CIDR of EMR Main VPC
+    Type: String
+    Default: 10.28.166.0/23
+#  pPeeringVPC:
+#    Description: Peering with ascend-main-vpc
+#    Type: String
+#    Default: vpc-460a6120
+#  pPeeringVPCCIDR:
+#    Description: CIDR Block of the VPC to pair with
+#    Type: String
+#    Default: 10.28.152.0/21
+#  pPeeringRouteTableID:
+#    Description: Route Table ID of the VPC to peer with
+#    Type: String
+#    Default: rtb-92b706eb
+  pSubnet1AZ:
+    Description: Avalability zone to create VPC private and public subnets - Use us-east-1c
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: us-east-1c
+  pSubnet1CIDR:
+    Description: CIDR of Subnet
+    Type: String
+    Default: 172.16.13.0/27
+  pSubnet2AZ:
+    Description: Avalability zone to create VPC private and public subnets - Use us-east-1e
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: us-east-1e
+  pSubnet2CIDR:
+    Description: CIDR of Private Subnet
+    Type: String
+    Default: 172.16.13.32/27
+#  pSubnet3AZ:
+#    Description: Avalability zone to create VPC private and public subnets
+#    Type: AWS::EC2::AvailabilityZone::Name
+#  pSubnet3CIDR:
+#    Description: CIDR of Public Subnet
+#    Type: String
+#    Default: 172.16.10.0/24
+#  pSubnet4AZ:
+#    Description: Avalability zone to create VPC private and public subnets
+#    Type: AWS::EC2::AvailabilityZone::Name
+#  pSubnet4CIDR:
+#    Description: CIDR of Public Subnet
+#    Type: String
+#    Default: 172.16.11.0/24
+#  pSubnet5AZ:
+#    Description: Avalability zone to create VPC private and public subnets
+#    Type: AWS::EC2::AvailabilityZone::Name
+#  pSubnet5CIDR:
+#    Description: CIDR of Public Subnet
+#    Type: String
+#    Default: 172.16.252.0/23
+#  pSubnet6AZ:
+#    Description: Avalability zone to create VPC private and public subnets
+#    Type: AWS::EC2::AvailabilityZone::Name
+#  pSubnet6CIDR:
+#    Description: CIDR of Public Subnet
+#    Type: String
+#    Default: 172.16.254.0/24
+#  pInstanceType:
+#    AllowedValues:
+#    - m4.xlarge
+#    - m4.2xlarge
+#    - m4.4xlarge
+#    ConstraintDescription: must be a valid EC2 instance type.
+#    Default: m4.xlarge
+#    Description: EC2 instance type
+#    Type: String
+#  pExperianInternalIP:
+#    Default: 89.174.214.74/32
+#    Description: CIDR of the Experian's IP
+#    Type: String
+#  pLinuxBastionAMI:
+#    Default: ami-4836a428
+#    Description: LinuxBastion AMI
+#    Type: String
+#  pHostLevelLogGroupName:
+#    Default: HostLogs
+#    Description: Name of HostLogs group name
+#    Type: String
+Conditions:
+  cPeerVPC: !Equals [!Ref pPeerVPC, true]
+Resources:
+  rVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref 'pVPCCIDR'
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+      - Key: Name
+        Value: !Ref 'AWS::StackName'
+      - Key: Application
+        Value: !Ref 'AWS::StackId'
+  rSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref 'rVPC'
+      AvailabilityZone: !Ref 'pSubnet1AZ'
+      CidrBlock: !Ref 'pSubnet1CIDR'
+      Tags:
+      - Key: Name
+        Value: !Join ['', [!Ref 'AWS::StackName', -Subnet1]]
+  rSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref 'rVPC'
+      AvailabilityZone: !Ref 'pSubnet2AZ'
+      CidrBlock: !Ref 'pSubnet2CIDR'
+      Tags:
+      - Key: Name
+        Value: !Join ['', [!Ref 'AWS::StackName', -Subnet2]]
+#  rSubnet3:
+#    Type: AWS::EC2::Subnet
+#    Properties:
+#      VpcId: !Ref 'rVPC'
+#      AvailabilityZone: !Ref 'pSubnet3AZ'
+#      CidrBlock: !Ref 'pSubnet3CIDR'
+#      Tags:
+#      - Key: Name
+#        Value: !Join ['', [!Ref 'AWS::StackName', -Subnet3]]
+#  rSubnet4:
+#    Type: AWS::EC2::Subnet
+#    Properties:
+#      VpcId: !Ref 'rVPC'
+#      AvailabilityZone: !Ref 'pSubnet4AZ'
+#      CidrBlock: !Ref 'pSubnet4CIDR'
+#      Tags:
+#      - Key: Name
+#        Value: !Join ['', [!Ref 'AWS::StackName', -Subnet4]]
+#  rSubnet5:
+#    Type: AWS::EC2::Subnet
+#    Properties:
+#      VpcId: !Ref 'rVPC'
+#      AvailabilityZone: !Ref 'pSubnet5AZ'
+#      CidrBlock: !Ref 'pSubnet5CIDR'
+#      Tags:
+#      - Key: Name
+#        Value: !Join ['', [!Ref 'AWS::StackName', -Subnet5]]
+#  rSubnet6:
+#    Type: AWS::EC2::Subnet
+#    Properties:
+#      VpcId: !Ref 'rVPC'
+#      AvailabilityZone: !Ref 'pSubnet6AZ'
+#      CidrBlock: !Ref 'pSubnet6CIDR'
+#      Tags:
+#      - Key: Name
+#        Value: !Join ['', [!Ref 'AWS::StackName', -Subnet6]]
+  rInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: vpc-squid-ig
+      - Key: Application
+        Value: !Ref 'AWS::StackId'
+  rAttachInternetGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref 'rVPC'
+      InternetGatewayId: !Ref 'rInternetGateway'
+#  drNATGateway:
+#    DependsOn: rAttachInternetGateway
+#    Type: AWS::EC2::NatGateway
+#    Properties:
+#      AllocationId: !GetAtt [rEIP, AllocationId]
+#      SubnetId: !Ref 'rSubnet1'
+#  rEIP:
+#    Type: AWS::EC2::EIP
+#    Properties:
+#      Domain: vpc
+  rPrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref 'rVPC'
+      Tags:
+      - Key: Name
+        Value: squid-rt
+      - Key: Application
+        Value: !Ref 'AWS::StackId'
+  rInternetGatewayRoute:
+    Type: AWS::EC2::Route
+    DependsOn: rAttachInternetGateway
+    Properties:
+      RouteTableId: !Ref 'rPrivateRouteTable'
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref 'rInternetGateway'
+  rSubnet1PublicRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref 'rSubnet1'
+      RouteTableId: !Ref 'rPrivateRouteTable'
+#  rPrivateRouteTable:
+#    Type: AWS::EC2::RouteTable
+#    Properties:
+#      VpcId: !Ref 'rVPC'
+#      Tags:
+#      - Key: Name
+#        Value: !Ref 'AWS::StackName'
+#      - Key: Application
+#        Value: !Ref 'AWS::StackId'
+#  rNATGatewayRoute:
+#    Type: AWS::EC2::Route
+#    Properties:
+#      RouteTableId: !Ref 'rPrivateRouteTable'
+#      DestinationCidrBlock: 0.0.0.0/0
+#      NatGatewayId: !Ref 'rNATGateway'
+  rSubnet2PublicRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref 'rSubnet2'
+      RouteTableId: !Ref 'rPrivateRouteTable'
+  rSquidMainSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: squid-proxy
+      GroupDescription: Rules for Squid Proxy
+      VpcId:
+        Ref: rVPC
+      Tags:
+      - Key: Name
+        Value: squid-proxy
+  SquidMainIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref rSquidMainSG
+      IpProtocol: tcp
+      FromPort: '3128'
+      ToPort: '3128'
+      CidrIp: !Ref pEMRVPCCIDR
+  SquidMainEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref rSquidMainSG
+      IpProtocol: -1
+      FromPort: '-1'
+      ToPort: '-1'
+      CidrIp: "0.0.0.0/0"
+  rSquidNetworkAcl:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      Tags:
+      - Key: Name
+        Value: squid-acl
+      VpcId:
+        Ref: rVPC
+  myNetworkAclEntrySquidPortIngress:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId:
+        Ref: rSquidNetworkAcl
+      RuleNumber: '100'
+      Protocol: "6"
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: !Ref 'pEMRVPCCIDR'
+      PortRange:
+        From: '3128'
+        To: '3128'
+  myNetworkAclEntryAllowAllIngress:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId:
+        Ref: rSquidNetworkAcl
+      RuleNumber: '200'
+      Protocol: "6"
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '1024'
+        To: '65535'
+  myNetworkAclEntryAllowSSHEgress:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId:
+        Ref: rSquidNetworkAcl
+      RuleNumber: '100'
+      Protocol: "6"
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '443'
+        To: '443'
+  myNetworkAclEntryAllowAllEgress:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId:
+        Ref: rSquidNetworkAcl
+      RuleNumber: '200'
+      Protocol: "6"
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: !Ref 'pEMRVPCCIDR'
+      PortRange:
+        From: '1024'
+        To: '65535'
+  rTransientSubnetNetworkAclAssociation1:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId:
+        Ref: rSubnet1
+      NetworkAclId:
+        Ref: rSquidNetworkAcl
+        #Ref: !GetAtt [rVPC, DefaultNetworkAcl]
+  rTransientSubnetNetworkAclAssociation2:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId:
+        Ref: rSubnet2
+      NetworkAclId:
+        Ref: rSquidNetworkAcl
+Outputs:
+  oVPC:
+    Description: VPC ID
+    Value: !Ref 'rVPC'
+    Export:
+      Name: "SquidVPC"
+  oSquidCIDR:
+    Description: Squid CIDR
+    Value: !Ref 'pVPCCIDR'
+    Export:
+      Name: "SquidCIDR"
+  oSquidSubnet1:
+    Description: Squid Subnet1
+    Value: !Ref 'rSubnet1'
+    Export:
+      Name: "SquidSubnet1"
+  oSquidSubnet2:
+    Description: Squid Subnet2
+    Value: !Ref 'rSubnet2'
+    Export:
+      Name: "SquidSubnet2"
+  oSquidRoute:
+    Description: Squid Routing Table
+    Value: !Ref 'rPrivateRouteTable'
+    Export:
+      Name: "SquidRoutingTable"
+  oSquidSecurityGroup:
+    Description: Main EC2 Squid SecruityGroup
+    Value: !Ref 'rSquidMainSG'
+    Export:
+      Name: "SquidMainSecurityGroup"
+
+

@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS CloudFormation Template: Create Lambda Execution Role for Account Review'
+Resources:
+  rLambdaAccountReviewRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: LambdaAutomationRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Policies:
+      - PolicyName: LambdaAutomationAccess
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Sid: Stmt1458923097000
+            Effect: Allow
+            Action:
+            - cloudtrail:LookupEvents
+            Resource:
+            - '*'
+          - Sid: StmAccessLogs
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource:
+            - '*'
+          - Sid: Stmt1458923121000
+            Effect: Allow
+            Action:
+            - ec2:*
+            Resource:
+            - '*'
+          - Sid: SNS
+            Effect: Allow
+            Action:
+            - sns:*
+            Resource:
+            - '*'
+          - Sid: StepFunctions
+            Effect: Allow
+            Action:
+            - states:*
+            Resource:
+            - '*'
+          - Sid: StmtSNSPublish
+            Effect: Allow
+            Action:
+            - sns:Publish
+            Resource:
+            - '*'
+
+

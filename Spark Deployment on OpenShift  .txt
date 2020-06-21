@@ -1,0 +1,106 @@
+                                               Spark Deployment on OpenShift  
+
+Description:
+
+Current state:
+* AWS EMR is used for deploying the spark framework.
+Future state:
+* Containerized spark pods are deployed over OpenShift.
+* It Give developers a simple and low-cost alternative to run spark jobs.
+* containers are very fast to deploy, so we can easily give each developer a container to run.
+* spark jobs with a very low cost.
+* Cost optimization and customized auto deployment.
+Prerequisites:
+* OS (Operatng system).
+* Docker file / Image.
+* Registry.
+* OpenShift.
+* AWS S3 (To list/read the objects from s3 in pod/spark-shell).
+
+Architecture:
+                                    
+
+
+
+
+
+
+Configuration Steps:
+* Need write Docker file
+
+
+      
+* https://github.com/radanalyticsio/openshift-spark.git     — clone this repository (Have default scripts) .
+* By using above Docker file you can create a Docker Image.
+* Once your Docker image is ready you can push that image to App-canvas Registry by using below commands.
+Login commands
+* Token will get in open shift console, Copy Login Command (same as mentioned below image).
+Log into the registry: 
+$ sudo docker login -p vf_IoZF0ikXrcrQA3vmGWwZS8tnj9JNnZw2sLkUeQuQ -u unused docker-registry-default.apps.appcanvas.net
+Log into OpenShift command line tools: 
+$ oc login --token vf_IoZF0ikXrcrQA3vmGWwZS8tnj9JNnZw2sLkUeQuQ console.appcanvas.net:8443  
+
+Image commands
+Push an image: 
+$ sudo docker tag myimage docker-registry-default.apps.appcanvas.net/project/name:tag
+$ sudo docker push docker-registry-default.apps.appcanvas.net/project/name
+
+Pull an image: 
+$ sudo docker pull docker-registry-default.apps.appcanvas.net/project/name:tag
+
+OpenShift:
+* Deploy your Image in OpenShift env , Pod will be Create.
+
+* Once Pod ready, Double click on that pod and go to terminal check the version of aws and provide your key's (Access key and secrete access key) ;
+(app-root)sh-4.2$ aws --version
+(app-root)sh-4.2$ aws configure
+AWS Access Key ID [None]: XXXXXXXXXXXXXXXXXXXXXXXXXXXX
+AWS Secret Access Key [None]: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+Default region name [None]: XXXXXXXXXXXXXXX
+
+* List out your all the buckets and objects and enter into spark shell
+(app-root)sh-4.2$ aws s3 ls
+(app-root)sh-4.2$ aws s3 ls s3://expn-cis-account-review-dev-code
+app-root)sh-4.2$ spark-shell
+
+
+
+* After entering into the spark shell, you have to provide the keys, create RDD and read the object; 
+ 
+scala> sc.hadoopConfiguration.set("fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider")
+scala> sc.hadoopConfiguration.set("fs.s3a.access.key", "XXXXXXXXXXXXXXXXXX")
+scala> sc.hadoopConfiguration.set("fs.s3a.secret.key","XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+scala> val test=sc.textFile("s3a://expn-cis-account-review-dev-code/test.txt")
+scala> test.count
+
+
+
+
+
+
+Optional:
+scala> test.count
+com.amazonaws.services.s3.model.AmazonS3Exception: Status Code: 403, AWS Service: Amazon S3, AWS Request ID: AC7C664D83C55A5B, AWS Error Code: null, AWS Error Message: Forbidden
+at com.amazonaws.http.AmazonHttpClient.handleErrorResponse(AmazonHttpClient.java:798)
+
+* If you get the above error while reading the file you need modify the bucket policy's (need to provide your credentials ?in bucket policy's [User ARN and user ID] same as mentioned below) ;
+* Run the below command to h=get those credentials
+(app-root)sh-4.2$ aws sts get-caller-identity
+{
+"UserId": "AIDARYYZI2QHIJ5K7MC6D",
+"Account": "ID",
+"Arn": "arn:aws:iam::<Account ID>:user/<Lanid>"
+}
+Update bucket policy:
+"Principal": {
+"AWS": [
+"arn:aws:iam::<Account ID>:user/<Lanid>",
+"arn:aws:iam::<Account ID>:user/<Lanid>"
+]
+},
+
+"aws:userId": [
+"Account ID",
+"AIDARYYZI2QHIJ5K7MC6D"
+
+

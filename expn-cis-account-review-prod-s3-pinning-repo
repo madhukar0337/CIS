@@ -1,0 +1,147 @@
+{
+    "Version": "2012-10-17",
+    "Id": "S3BucketPolicyFull",
+    "Statement": [
+        {
+            "Sid": "S3DevOps",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::902577807644:role/AWS-Ascend-Devops-Admin"
+            },
+            "Action": [
+                "s3:GetLifecycle*",
+                "s3:PutLifecycle*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-pinning-repo",
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-pinning-repo/*"
+            ]
+        },
+        {
+            "Sid": "EMRS3Access",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::902577807644:role/AccountReviewLambdaAutomationRole",
+                    "arn:aws:iam::902577807644:role/EMR_EC2_DefaultRole"
+                ]
+            },
+            "Action": [
+                "s3:Get*",
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:Abort*",
+                "s3:List*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-pinning-repo",
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-pinning-repo/*"
+            ]
+        },
+        {
+            "Sid": "EMRDevGetS3Access",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::121922704398:role/EMR_EC2_DefaultRole",
+                    "arn:aws:iam::121922704398:role/EMR_EC2_DefaultRolealldev"
+                ]
+            },
+            "Action": [
+                "s3:GetObject",
+                "s3:List*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-pinning-repo",
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-pinning-repo/*"
+            ]
+        },
+        {
+            "Sid": "EMRDevPutS3Access",
+            "Effect": "Deny",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::121922704398:role/EMR_EC2_DefaultRolealldev",
+                    "arn:aws:iam::121922704398:role/EMR_EC2_DefaultRole"
+                ]
+            },
+            "Action": "s3:PutObject",
+            "Resource": [
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-pinning-repo",
+                "arn:aws:s3:::expn-cis-account-review-prod-s3-pinning-repo/*"
+            ],
+            "Condition": {
+                "StringNotEquals": {
+                    "s3:x-amz-acl": "bucket-owner-full-control"
+                }
+            }
+        },
+        {
+            "Sid": "PutObjectAccess",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::902577807644:role/expn-cis-usaa-write"
+            },
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::expn-cis-account-review-prod-s3-pinning-repo/*",
+            "Condition": {
+                "IpAddress": {
+                    "aws:SourceIp": "167.24.0.0/16"
+                }
+            }
+        },
+        {
+            "Sid": "MultiPartUpload",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::902577807644:role/expn-cis-usaa-write"
+            },
+            "Action": [
+                "s3:AbortMultipartUpload",
+                "s3:ListMultipartUploadParts"
+            ],
+            "Resource": "arn:aws:s3:::expn-cis-account-review-prod-s3-pinning-repo/*",
+            "Condition": {
+                "IpAddress": {
+                    "aws:SourceIp": "167.24.0.0/16"
+                }
+            }
+        },
+        {
+            "Sid": "DenyIncorrectEncryptionHeader",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::expn-cis-account-review-prod-s3-pinning-repo/*",
+            "Condition": {
+                "StringNotEquals": {
+                    "s3:x-amz-server-side-encryption": "AES256"
+                }
+            }
+        },
+        {
+            "Sid": "DenyUnEncryptedObjectUploads",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::expn-cis-account-review-prod-s3-pinning-repo/*",
+            "Condition": {
+                "Null": {
+                    "s3:x-amz-server-side-encryption": "true"
+                }
+            }
+        },
+        {
+            "Sid": "DenyNonSSLAccess",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-account-review-prod-s3-pinning-repo/*",
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "false"
+                }
+            }
+        }
+    ]
+}

@@ -1,0 +1,118 @@
+#Author : Jerome Chadee
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EC2 instance creation for Bastion Host
+Parameters:
+  pEnvironment:
+    Description: dev, stage, prod, qa, uat
+    Type: String
+  pApplication:
+    Default: jumpbox
+    Description: What's Installed
+    Type: String
+  pInstanceName:
+    Description: Enter Name of Instance
+    Type: String
+  pInstanceType:
+    Description: EC2 instance type
+    Type: String
+  pKeyName:
+    Description: Name of an existing EC2 KeyPair to enable access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+  pImageId:
+    Description: Harden AMI ID of to use for EC2 Instances
+    Type: String
+#  pSquidProxyIP:
+#    Description: Enter IP of Squid Proxy
+#    Type: String
+  pClient:
+    Description: The Tag name for the Clients
+    Type: String
+Resources:
+  rBastionHostSSH:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: bastion-ssh
+      GroupDescription: Rules for Client to SSH into EMR Instances
+      VpcId:
+        Fn::ImportValue: !Join ['', ['MainVPC', !Ref 'pClient', !Ref 'pEnvironment']]
+      Tags:
+      - Key: Name
+        Value: !Join ['-', [!Ref 'pInstanceName', !Ref 'pClient', !Ref 'pEnvironment']]
+  EITSIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref rBastionHostSSH
+      IpProtocol: tcp
+      FromPort: '22'
+      ToPort: '22'
+      CidrIp: 10.8.0.0/8
+  ExperianIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref rBastionHostSSH
+      IpProtocol: tcp
+      FromPort: '22'
+      ToPort: '22'
+      CidrIp: 10.17.0.0/24
+  MainEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref rBastionHostSSH
+      IpProtocol: -1
+      FromPort: '-1'
+      ToPort: '-1'
+      CidrIp: "0.0.0.0/0"
+  rBastionHost:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref 'pImageId'
+      InstanceType: !Ref 'pInstanceType'
+      Monitoring: true
+      IamInstanceProfile: expn-cis-ec2-default-role
+      KeyName: !Ref 'pKeyName'
+      SecurityGroupIds:
+      - !Ref rBastionHostSSH
+      SubnetId:
+        Fn::ImportValue: !Join ['', ['MainInstanceSubnet2', !Ref 'pClient', !Ref 'pEnvironment']]
+#      PrivateIpAddress: !Ref 'pPrivateIPAddress'
+#      UserData:
+#        Fn::Base64: !Sub |
+#          #!/bin/bash -x
+#          chattr -R -i /etc
+#          #aws s3 cp s3://cis-us-server-config/root/etc/ /etc/ --recursive
+#          #aws s3 cp s3://cis-us-server-repos/cloudwatch/var/awslogs/etc/ /var/awslogs/etc/ --recursive
+#          #sh /etc/rc.d/rc.local
+#          #aws s3 cp s3://cis-us-automation/shell-scripts/memory_status.sh /var/ --recursive
+#          #chmod u+x /var/memory_status.sh /var/cron_pusher.sh
+#          #sh /var/cron_pusher.sh
+#          aws s3 cp s3://expn-cis-infrastructure-code-repo/ssm/default/main/amazon-ssm-agent.service /etc/systemd/system/amazon-ssm-agent.service
+#          aws s3 cp s3://expn-cis-infrastructure-code-repo/ssm/default/main/awsagent.env /etc/init.d/awsagent.env
+#          aws s3 cp s3://expn-cis-infrastructure-code-repo/cloudwatch/default/main/ /var/awslogs/etc/ --recursive
+#          sed -i 's/SquidProxyIP/${pSquidProxyIP}/g' /var/awslogs/etc/proxy.conf
+#          sed -i 's/SquidProxyIP/${pSquidProxyIP}/g' /etc/systemd/system/amazon-ssm-agent.service
+#          sed -i 's/SquidProxyIP/${pSquidProxyIP}/g' /etc/init.d/awsagent.env
+#          #echo -e "# Version: 1.3.9\# Refer to http://docs.aws.amazon.com/cli/latest/userguide/cli-http-proxy.html for details.\HTTPS_PROXY=https://${pSquidProxyIP}:3128 > /var/awslogs/etc/proxy.conf" > /etc/resolv.conf
+#          systemctl enable awslogs
+#          systemctl enable awsagent
+#          systemctl enable amazon-ssm-agent
+#          systemctl daemon-reload
+#          systemctl restart awslogs
+#          systemctl restart awsagent
+#          systemctl restart amazon-ssm-agent
+#          chkconfig awslogs on
+      Tags:
+      - Key: Name
+        Value: !Join ['-', [!Ref 'pInstanceName', !Ref 'pClient', !Ref 'pEnvironment']]
+      - Key: Application
+        Value: !Ref pApplication
+Outputs:
+  oBastionHost:
+    Description: JumpBox Instance
+    Value: !Ref 'rBastionHost'
+    Export:
+      Name: !Join ['', [!Ref 'pInstanceName', !Ref 'pClient', !Ref 'pEnvironment']]
+  oBastionHostIP:
+    Description: Private IP Address
+    Value: !GetAtt [rBastionHost, PrivateIp]
+    Export:
+      Name: !Join ['', ['BastionHostIP', !Ref 'pClient', !Ref 'pEnvironment']]

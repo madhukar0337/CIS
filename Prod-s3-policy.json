@@ -1,0 +1,268 @@
+{
+    "Rules": [
+        {
+            "Filter": {
+                "Prefix": "consumer-consolidated-files/"
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 30,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "consumer-consolidated-files"
+        },
+        {
+            "Filter": {
+                "Prefix": "strategy-files/"
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 90,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "strategy-files"
+        }
+    ]
+}
+
+aws s3api put-bucket-lifecycle-configuration --bucket expn-cis-account-review-prod-s3-from-usaa-archive --lifecycle-configuration file://expn-cis-account-review-prod-s3-from-usaa-archive.json
+
+{
+    "Rules": [
+        {
+            "Filter": {
+                "Prefix": ""
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 45,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "Move to Glacier after 45 days-Pinning Repo"
+        }
+    ]
+}
+
+aws s3api put-bucket-lifecycle-configuration --bucket expn-cis-account-review-prod-s3-pinning-repo --lifecycle-configuration file://expn-cis-account-review-prod-s3-pinning-repo.json
+
+{
+    "Rules": [
+        {
+            "Filter": {
+                "Prefix": ""
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 30,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "Move to Glacier after 30 days-Random Number"
+        }
+    ]
+}
+
+aws s3api put-bucket-lifecycle-configuration --bucket expn-cis-account-review-prod-s3-random-number --lifecycle-configuration file://expn-cis-account-review-prod-s3-random-number.json
+
+{
+    "Rules": [
+        {
+            "Filter": {
+                "Prefix": ""
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 45,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "Bfs-Daily pinning files"
+        },
+        {
+            "Filter": {
+                "Prefix": ""
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 45,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "Bfs-Monthly pinning file"
+        },
+        {
+            "Filter": {
+                "Prefix": ""
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 45,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "Bfs-Daily-gvap-pinning"
+        },
+        {
+            "Filter": {
+                "Prefix": ""
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 45,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "Bfs-Monthly-gvap-pinning"
+        }
+    ]
+}
+
+aws s3api put-bucket-lifecycle-configuration --bucket expn-cis-account-review-prod-s3-bfs-usaa --lifecycle-configuration file://expn-cis-account-review-prod-s3-bfs-usaa.json
+
+{
+    "Rules": [
+        {
+            "Filter": {
+                "Prefix": ""
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 30,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "Move to Glacier after 30 days-s3-execution"
+        }
+    ]
+}
+
+aws s3api put-bucket-lifecycle-configuration --bucket expn-cis-account-review-prod-s3-execution --lifecycle-configuration file://expn-cis-account-review-prod-s3-execution.json
+
+{
+    "Rules": [
+        {
+            "Filter": {
+                "Prefix": ""
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 30,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "Move to Glacier after 30 days-s3-to-usaa"
+        }
+    ]
+}
+
+aws s3api put-bucket-lifecycle-configuration --bucket expn-cis-account-review-prod-s3-to-usaa --lifecycle-configuration file://expn-cis-account-review-prod-s3-to-usaa.json
+
+{
+    "Rules": [
+        {
+            "Filter": {
+                "Prefix": "consumer-consolidated-files/"
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 30,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "consumer-consolidated-files"
+        },
+        {
+            "Filter": {
+                "Prefix": "strategy-files/"
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 90,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "strategy-files"
+        }
+    ]
+}
+
+aws s3api put-bucket-lifecycle-configuration --bucket expn-cis-preselect-prod-s3-from-usaa-archive --lifecycle-configuration file://expn-cis-preselect-prod-s3-from-usaa-archive.json
+
+
+
+{
+    "Rules": [
+        {
+            "Filter": {
+                "Prefix": ""
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 30,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "Move to Glacier after 30 days-s3-execution"
+        }
+    ]
+}
+
+aws s3api put-bucket-lifecycle-configuration --bucket expn-cis-preselect-prod-s3-execution --lifecycle-configuration file://expn-cis-preselect-prod-s3-execution.json
+
+
+

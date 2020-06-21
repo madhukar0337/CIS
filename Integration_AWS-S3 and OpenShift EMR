@@ -1,0 +1,156 @@
+/c/users/c62567a/.ssh   --- generate ssh key
+git add --all
+git commit -m "firstcommit"  -- it will ask global credentils;
+git config --global user.name "Ponnala, Madhukar"
+git config --global user.email "Madhukar.Ponnala@experian.com"
+git commit -m "firstcommit"
+git remote add origin https://bitbucketglobal.experian.local/scm/~c62567a/openshift-emr.git
+ssh://git@bitbucketglobal.experian.local/~c62567a/openshift-emr.git -- go to your .ssh folder and run 
+ssh-keygen -t rsa -C "madhukar.ponnala@experian.com"  -- command to create ssh key;
+git remote add origin ssh://git@bitbucketglobal.experian.local/~c62567a/openshift-emr.git
+https://bitbucketglobal.experian.local/scm/~c62567a/openshift-emr.git
+git remote set-url ssh://git@bitbucketglobal.experian.local/~c62567a/openshift-emr.git
+git push origin master
+
+
+aws s3 cp /home/hadoop/text.txt s3://expn-cis-account-review-dev-input/ --sse
+
+(app-root)sh-4.2$ aws sts get-caller-identity
+{
+    "UserId": "AIDARYYZI2QHIJ5K7MC6D",
+    "Account": "121922704398",
+    "Arn": "arn:aws:iam::121922704398:user/C62567A"
+}
+
+
+sc.hadoopConfiguration.set("fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider") 
+sc.hadoopConfiguration.set("fs.s3a.access.key", "AKIARYYZI2QHM5DIWHAX")
+sc.hadoopConfiguration.set("fs.s3a.secret.key","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")
+
+val test=sc.textFile("s3a://expn-cis-account-review-dev-code/test.txt")
+test.count
+val test=sc.textFile("s3a://expn-cis-account-review-dev-input/test.txt")
+
+
+scala> var w=spark.read.csv("s3://expn-cis-account-review-dev-input/c13624a/USAA/UDATest.csv")
+w: org.apache.spark.sql.DataFrame = [_c0: string]
+
+scala> w.count
+res0: Long = 64211
+
+
+
+Create build in openshift env
+Controle pannel - files nad folders-view -- Check hiddenfiles and folders -- enble tO see the hidden files in windows and uncheck/click on hide expresstion for known file system;
+oc login https://console.appcanvas.net:8443 --token=5AwLlrwfldzS2JQo360c1ipC2IPXQVpyBqwn-ebfHro     ---  need to run windows machine 
+oc project openshiftemr
+oc project openshiftemoc project openshiftem
+oc new-app ssh://git@bitbucketglobal.experian.local/~c62567a/openshift-emr.git --name=spark --strategy=docker
+
+
+#####################################################################################################################################################################
+HTTPS_PROXY=https://usmckp-proxy.mck.experian.com:9595
+https_proxy=https://usmckp-proxy.mck.experian.com:9595
+SHLVL=1
+SUDO_COMMAND=/bin/su
+HOME=/root
+no_proxy=.svc.cluster.local,.cluster.local,.local,.experian.corp,.apps.experian.com,.appcanvas.net,.paas.experian.corp,.experian.com,.experian.local
+HTTP_PROXY=http://usmckp-proxy.mck.experian.com:9595
+
+
+{
+ "proxies":
+ {
+   "default":
+   {
+     "httpProxy": "http://usmckp-proxy.mck.experian.com:9595",
+     "httpsProxy": "https://usmckp-proxy.mck.experian.com:9595"
+   }
+ }
+}
+
+###############################################################################################################################################
+
+
+FROM centos/python-35-centos7:latest
+
+USER root
+
+# Install required RPMs and ensure that the packages were installed
+RUN yum install -y java-1.8.0-openjdk wget \
+    && yum clean all && rm -rf /var/cache/yum \
+    && rpm -q java-1.8.0-openjdk wget
+
+RUN mkdir -p /mnt/bucket-test
+RUN yum -y install epel-release
+RUN yum -y install s3fs-fuse
+RUN yum install -y python3
+RUN yum install -y python-pip
+RUN yum install python3-pip
+RUN /usr/bin/pip3 install --upgrade pip
+RUN /usr/bin/pip3 install awscli
+
+# directory
+RUN wget http://mirror.vorboss.net/apache/spark/spark-2.4.5/spark-2.4.5-bin-hadoop2.7.tgz
+RUN tar -xvzf spark-2.4.5-bin-hadoop2.7.tgz
+RUN mv spark-2.4.5-bin-hadoop2.7 spark
+RUN mkdir -p /opt
+RUN mv spark /opt
+
+# Environment variables
+ENV \
+    JBOSS_IMAGE_NAME="radanalyticsio/openshift-spark" \
+    JBOSS_IMAGE_VERSION="2.4-latest" \
+    PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/spark/bin" \
+    SCL_ENABLE_CMD="scl enable rh-python36" \
+    SPARK_HOME="/opt/spark" \
+    SPARK_INSTALL="/opt/spark-distro" \
+    STI_SCRIPTS_PATH="/usr/libexec/s2i"
+
+# Labels
+LABEL \
+      io.cekit.version="2.2.7"  \
+      io.openshift.s2i.scripts-url="image:///usr/libexec/s2i"  \
+      maintainer="madhukar.ponnala@experian.com" \
+      name="experian-spark"  \
+      org.concrt.version="2.2.7"  \
+      sparkversion="2.4.5"  \
+      version="2.4-latest"
+
+# Add scripts used to configure the image
+RUN mkdir -p /tmp/scripts
+ADD entrypoint /tmp/scripts
+ADD launch.sh /tmp/scripts
+ADD  modules /tmp/scripts
+
+# Custom scripts
+USER root
+RUN [ "bash", "-x", "/tmp/scripts/common/install" ]
+
+USER root
+RUN [ "bash", "-x", "/tmp/scripts/metrics/install" ]
+
+USER root
+RUN [ "bash", "-x", "/tmp/scripts/spark/install" ]
+
+USER root
+RUN [ "bash", "-x", "/tmp/scripts/s2i/install" ]
+
+USER root
+RUN [ "bash", "-x", "/tmp/scripts/python36/install" ]
+
+# Modify permission for Openshift platform
+RUN chgrp -R 0 /tmp/* && \
+    chmod -R g=u /tmp/*
+RUN chmod g=u /etc/passwd
+
+USER 1001
+
+EXPOSE 8080 80 443 7077
+
+# Specify the working directory
+WORKDIR /tmp
+
+ENTRYPOINT ["/entrypoint"]
+
+CMD ["/launch.sh"]

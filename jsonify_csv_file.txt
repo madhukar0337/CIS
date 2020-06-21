@@ -1,0 +1,379 @@
+"""
+This module is used to read a csv file for N number of test cases as records for APIs
+and generate request Jsons as per the swagger format provided.
+It also reads specific headers and metadata from the input csv file.
+
+"""
+
+import copy
+import csv
+import json
+import logging
+import os
+import shutil
+import sys
+import collections
+from collections import OrderedDict
+from pathlib import Path
+
+
+CSV_FILE = None
+RESOURCE_PATH = None
+PATH = None
+HEADER_CONFIG_DICT = None
+
+
+def set_log():
+    """
+    Appends the log file, the log file being called from another module.
+    :return: None
+    """
+    # format = '%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s'
+    log_path = Path("logs/" + os.path.basename(RESOURCE_PATH) + "-request.log")
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    logging.basicConfig(filename=log_path, filemode='a',
+                        datefmt='%H:%M:%S', level=logging.DEBUG)
+
+
+def get_json_dump_path():
+    """
+    :return: Json path to be written with json files
+    """
+    json_dump_path = PATH + "/requests/" + CSV_FILE.split('.', 1)[0]
+    return Path(json_dump_path)
+
+
+def get_swagger_request_template_path():
+    """
+    :return: returns swagger format path for the API.
+    """
+    return Path(RESOURCE_PATH + "/input/request_format.json")
+
+
+def get_csv_data():
+    """
+    :return: returns input csv file path with test cases.
+    """
+    csv_path = Path(RESOURCE_PATH + "/input/csv-resources/" + CSV_FILE)
+    return str(csv_path)
+
+
+def validate_header_schema(csv_headers):
+    """
+    :param csv_headers: Input headers provided by users for test cases.
+    """
+
+    # Report duplicate headers in csv
+    csv_duplicates = [x.upper() for x, count in
+                      collections.Counter(csv_headers).items() if count > 1]
+    if csv_duplicates:
+        log_message = "Duplicate Headers in CSV is = {0}".format(csv_duplicates)
+        logging.error(log_message)
+
+    # Report duplicate values in metadata dict.
+    meta_mapped_val = [HEADER_CONFIG_DICT[x].strip().lower() for x in HEADER_CONFIG_DICT]
+    meta_duplicates = [x.upper() for x, count in
+                       collections.Counter(meta_mapped_val).items() if count > 1]
+    if meta_duplicates:
+        log_message = "Duplicate values in metadata file is = {0}".format(meta_duplicates)
+        logging.error(log_message)
+
+    # Report headers missing from input csv.
+    csv_headers = set(csv_headers)
+    meta_mapped_val = set(meta_mapped_val)
+    headers_missed_from_csv = meta_mapped_val.difference(csv_headers)
+    if headers_missed_from_csv:
+        log_message = "Following Headers are missing from input csv but available in metadata" \
+                      "file : {0}".format(list(map(lambda x: x.upper(), headers_missed_from_csv)))
+        logging.error(log_message)
+
+    # Report Additional headers in CSV.
+    additional_headers_in_csv = csv_headers.difference(meta_mapped_val)
+    if additional_headers_in_csv:
+        log_message = "Following Headers are additional in input" \
+                      "csv : {0}".format(list(map(lambda x: x.upper(), additional_headers_in_csv)))
+        logging.info(log_message)
+    if csv_duplicates or meta_duplicates or headers_missed_from_csv:
+        sys.exit("Please check the log file, the headers in "
+                 "csv or metadata has problems that needs attention!")
+
+
+def read_csv():
+    """
+    :return: reads input csv file and returns the data as list
+    of dictionary for each record in input csv.
+    """
+    wb_data = get_csv_data()
+    dict_list = []
+    with open(wb_data) as csv_file:
+        reader = csv.reader(csv_file)
+        csv_headers = next(reader)
+        stripped_csv_headers = [item.strip().lower()
+                                for item in csv_headers]
+        validate_header_schema(stripped_csv_headers)
+        reversed_mapping = {v.strip().lower(): k for k, v
+                            in HEADER_CONFIG_DICT.items()}
+        for row in reader:
+            try:
+                record = {stripped_csv_headers[i]: row[i] for i in range(11, len(row))}
+            except Exception as err_msg:
+                log_message = "Error in processing csv data, it is not" \
+                              "as per standard for record -->{0}".format(row)
+                logging.error(log_message)
+                sys.exit("Error in processing csv data, it is not as per standard" + str(err_msg))
+            swapped_key_record = {reversed_mapping[key]: value for key, value
+                                  in record.items() if
+                                  key in reversed_mapping}
+            dict_list.append(swapped_key_record)
+    return dict_list
+
+
+def read_csv_test_case():
+    """
+    Reads test cases name into a dictionary.
+    :return: returns a dictionary list for test case names from input csv.
+    """
+    wb_data = get_csv_data()
+    dict_list = []
+    with open(wb_data) as csv_file:
+        reader = csv.reader(csv_file)
+        test_case_col_name = next(reader)[0].strip()
+        for row in reader:
+            test_case_col_value = row[0].strip()
+            test_case_col_valid_value = sys.exit(
+                "Each testCase name/field/cell value must be entered!") if not test_case_col_value \
+                else test_case_col_value
+            dict_list.append({test_case_col_name: test_case_col_valid_value})
+
+    return dict_list
+
+
+def read_json_template():
+    """
+    :return: returns json object for the template defined for the API in API DICT.
+    """
+    json_template = None
+    with open(get_swagger_request_template_path(), 'r') as file:
+        json_template = json.load(file, object_pairs_hook=OrderedDict)
+    log_message = "Couldn't read Json Template at" \
+                  "path: {0}".format(get_swagger_request_template_path())
+    return json_template if json_template else logging.error(log_message)
+
+
+def write_json_to_file(data, file_name_without_extn, json_dump_path):
+    """
+    Writes Json objects to file for each test cases with test case name in csv.
+    :param data: json object for test case
+    :param file_name_without_extn: file name
+    :param json_dump_path: path to write json file
+    :return: None
+    """
+    file_name = os.path.join(json_dump_path, file_name_without_extn + '.json')
+    with open(file_name, 'w') as out_file:
+        out_file.write(data)
+    log_message = "{0} created".format(file_name)
+    logging.info(log_message)
+
+
+def clear_empty_object(input_data):
+    """
+    removes the section/element/objects with no value
+    :param input_data: input json object
+    :return: output json object with no empty values.
+    """
+    output_data = OrderedDict()
+    for input_key, input_val in input_data.items():
+        if isinstance(input_val, dict):
+            input_val = clear_empty_object(input_val)
+        if input_val not in (u'', None, {}):
+            output_data[input_key] = input_val
+    return output_data
+
+
+def treat_null_from_csv_as_empty_value(input_data):
+    """
+    Elements in Json with NULL values are replaced with empty value
+    :param input_data: input json object
+    :return: output json object
+    """
+    output_data = OrderedDict()
+    for input_key, input_val in input_data.items():
+        if isinstance(input_val, dict):
+            input_val = treat_null_from_csv_as_empty_value(input_val)
+        if isinstance(input_val, str):
+            if input_val == 'NULL':
+                output_data[input_key] = ""
+            else:
+                output_data[input_key] = input_val
+        elif isinstance(input_val, list) and 'NULL' in input_val:
+            temporary_list = []
+            for i in input_val:
+                if i == 'NULL':
+                    temporary_list.append("")
+                else:
+                    temporary_list.append(i)
+            output_data[input_key] = temporary_list
+        elif isinstance(input_val, list) and input_val[0] and isinstance(input_val[0], dict):
+            temp = []
+            for j in input_val:
+                temporary_dictionary = {}
+                for key, value in j.items():
+                    if value == 'NULL':
+                        temporary_dictionary[key] = ""
+                    else:
+                        temporary_dictionary[key] = value
+                temp.append(temporary_dictionary)
+            output_data[input_key] = temp
+        else:
+            output_data[input_key] = input_val
+    return output_data
+
+
+def jsonify_it(input_json):
+    """
+    :param input_json: raw Json string.
+    :return: returns pretty Json.
+    """
+    json_output_with_some_null_value = clear_empty_object(input_json)
+    json_output = treat_null_from_csv_as_empty_value(json_output_with_some_null_value)
+    return json.dumps(json_output, sort_keys=False, indent=4, separators=(',', ':'))
+
+
+def generate_json_from_template(template, row_dict, counter, json_dump_path, test_case):
+    """
+    :param template: Json template from latest swagger as per API getting tested.
+    :param row_dict: A record from input csv in dictionary data
+    structure with header to value mapping.
+    :param counter: pointer to record getting processed at current point in time.
+    :param json_dump_path: Path where each Json input request will be created.
+    :param test_case: containing test case names.
+    At the end of this function, it persist each pretty Json in the output file.
+    """
+    multi_item_segments = list()
+    for segment in row_dict:
+        elements = segment.split('.')
+        multi_entry = segment.split('##')
+        if len(multi_entry) == 1:
+            key = "['" + "']['".join(elements) + "']"
+            value = str(row_dict[segment])
+            if isinstance(eval('template' + key), list):
+                if isinstance(row_dict[segment], str):
+                    value = row_dict[segment].split(';')
+                    value = [i.strip().replace("\"", "") for i in value]
+                    if value[0]:
+                        exec("%s = %s" % ('template' + key, value))
+                    else:
+                        exec("%s" % ('del template' + key))
+                else:
+                    exec("%s = %s" % ('template' + key, [value])) if value \
+                        else exec("%s" % ('del template' + key))
+            else:
+                if value:
+                    exec("%s = %s" % ('template' + key, "value"))
+                else:
+                    exec("%s" % ('del template' + key))
+        elif len(multi_entry) == 2:
+            multi_item_segments.append(segment)
+        else:
+            log_message = "Invalid col name in csv-resources" \
+                          "CSV for col = '{0}'".format(segment)
+            logging.error(log_message)
+    template = multi_item_objects(template, row_dict, multi_item_segments)
+    jsonified_obj = jsonify_it(template)
+    test_case_name = test_case[counter].get('testCase')
+    if test_case_name:
+        write_json_to_file(jsonified_obj, test_case_name, json_dump_path)
+    else:
+        log_message = "CSV Field Name 'testCase' not found while processing" \
+                      "record number = {0}, Current Field Name" \
+                      "is = {1}".format(counter, list(test_case[counter].keys()))
+        logging.error(log_message)
+        sys.exit("CSV Field Name 'testCase' not found while processing "
+                 "record number = {0}, Current Field Name "
+                 "is = {1}".format(counter, list(test_case[counter].keys())))
+
+
+def multi_item_objects(template, row_dict, multi_item_segments):
+    """
+    To process multi item segments of the input json object like applicant
+    having multi phone numbers etc.
+    :param template: Json template
+    :param row_dict: record for a test in a form of dict.
+    :param multi_item_segments: multi item segments from the caller function.
+    :return: processed Json
+    """
+    unique_object_segment = set()
+    unique_element_segment = set()
+    for element_path in multi_item_segments:
+        items = element_path.split('.')
+        del items[-1]
+        unique_object_segment.add('.'.join(items))
+        unique_element_segment.add(element_path.split('##')[0])
+    for obj_path in unique_object_segment:
+        temp_dict = dict()
+        for element_path in unique_element_segment:
+            items = element_path.split('.')
+            del items[-1]
+            if obj_path == '.'.join(items):
+                for multi_item_segment in multi_item_segments:
+                    items = multi_item_segment.split('.')
+                    last_element = items.pop()
+                    if element_path == '.'.join(items) + '.' + last_element.split('##')[0]:
+                        temp_dict[last_element] = str(row_dict[multi_item_segment])
+        multi_entry_list = list()
+        for digital_flag in range(max({int(item.split('##')[-1]) for item in temp_dict})):
+            multi_entry_item = {item.split('##')[0]: temp_dict[item.split('##')[0]
+                                                               + '##' + str(digital_flag + 1)] for
+                                item in temp_dict
+                                if temp_dict[item.split('##')[0] + '##' + str(digital_flag + 1)]}
+            if multi_entry_item:
+                multi_entry_list.append(multi_entry_item)
+        key = "['" + "']['".join(obj_path.split('.')) + "']"
+        if multi_entry_list:
+            exec("%s = %s" % ('template' + key, multi_entry_list))
+        else:
+            exec("%s" % ('del template' + key))
+    return template
+
+
+def generate_json_from_csv(file, resource_path, path):
+    """
+    Entry point(main method) for this module.
+    """
+    global CSV_FILE
+    global RESOURCE_PATH
+    global PATH
+    global HEADER_CONFIG_DICT
+    CSV_FILE = file
+    RESOURCE_PATH = resource_path
+    PATH = path
+    HEADER_CONFIG_DICT = eval(open(Path(RESOURCE_PATH +
+                                        "/input/json_meta_config.json")).read())
+    set_log()   # setting the log file for this module.
+    json_dump_path = get_json_dump_path()
+    try:
+        shutil.rmtree(json_dump_path)
+    except shutil.Error as err_msg:
+        log_message = 'Directory does not Exists, error is: {0}'.format(str(err_msg))
+        logging.error(log_message)
+    except OSError as err_msg:
+        log_message = 'OS Error!!! Directory does not Exists, error is: {0}'.format(str(err_msg))
+        logging.error(log_message)
+    Path(json_dump_path).mkdir(parents=True, exist_ok=True)
+    json_template, wb_data = read_json_template(), read_csv()
+    test_case, counter = read_csv_test_case(), 0
+    template = copy.deepcopy(json_template)
+    for record in wb_data:
+        generate_json_from_template(template, record, counter, json_dump_path, test_case)
+        template = copy.deepcopy(json_template)
+        counter += 1
+    log_message = "Generated '{0}' input request jsons for test cases" \
+                  "from csv file= '{1}'".format(counter, CSV_FILE)
+    logging.info(log_message)
+
+
+if __name__ == "__main__":
+    generate_json_from_csv('socialsearch.csv', 'api-resources/social-search', 'api-resources/social-search/non-apigee-run/run_3')
+    print(sys.getfilesystemencoding(), sys.getdefaultencoding(), sys.getprofile(),
+          sys.getfilesystemencodeerrors(), os.fsdecode('fileoneerrorhf - Copy.csv'),
+          os.fsencode('fileoneerrorhf - Copy.csv'), sep='||')

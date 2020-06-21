@@ -1,0 +1,84 @@
+import boto3 
+import logging
+import os
+import datetime
+from dateutil.parser import parse
+import pymysql
+from sqlalchemy import create_engine
+import json
+import boto3, botocore
+from botocore.exceptions import ClientError
+import hashlib
+from collections import Counter
+from openpyxl import load_workbook
+from io import BytesIO
+import os
+
+
+########################## Global variables ################################
+
+REGION = 'us-east-1'
+RDS_HOST = "expn-cis-account-review-prod-mysql.cujqiiyaa11l.us-east-1.rds.amazonaws.com"
+NAME = "experianusaa"
+PASSWORD = "K%k$ed13CISn"
+DB_NAME = "tracker"
+
+def lambda_handler(event, context):
+    db_url="mysql+pymysql://experianusaa:K%k$ed13CISn@expn-cis-account-review-prod-mysql.cujqiiyaa11l.us-east-1.rds.amazonaws.com:3306/tracker"
+    #get_the_dates()
+    rds_select("show databases")
+    #readSqlFile(db_url)
+
+
+
+def readSqlFile(db_url1):
+    excelPath='c13624a/samples/db_backup.sql'
+    s3client = boto3.client('s3')
+    s3 = boto3.resource('s3')
+    tablement=[]
+    s3.Bucket('expn-cis-account-review-dev-s3-emr').download_file(excelPath, '/tmp/db_backup.sql')
+    file = open('/tmp/db_backup.sql').read()
+    engine = create_engine(db_url1)
+    #escaped_sql = text(file.read())
+    engine.execute(ddl_sql)
+    print(file)
+    #engine.execute(escaped_sql)
+    
+
+
+
+
+
+
+
+def get_the_dates():
+    excelPath='c13624a/samples/StrategyExecution.xlsx'
+    s3client = boto3.client('s3')
+    s3 = boto3.resource('s3')
+    tablement=[]
+    s3.Bucket('expn-cis-account-review-dev-s3-emr').download_file(excelPath, '/tmp/StrategyExecution.xlsx')
+    wb = load_workbook('/tmp/StrategyExecution.xlsx',data_only=True)
+    ws = wb.active
+    sh1_row_number = ws.max_row
+    sh1_col_number = ws.max_column
+    print(sh1_row_number,sh1_col_number)
+    for row in ws.iter_rows():
+        #print(str(row[4].value))
+        if (str(row[4].value).upper()=='Y'):
+            #print(type(tablement))
+            x=datetime.strptime(row[1].value, '%Y-%m-%d')
+            print(x)
+            print([cell.value for cell in row])
+
+def rds_insert(sql):
+    engine = create_engine("mysql+pymysql://experianusaa:K%k$ed13CISn@expn-cis-account-review-prod-mysql.cujqiiyaa11l.us-east-1.rds.amazonaws.com:3306/tracker") 
+    engine.echo = False
+    result = engine.execute(sql)
+
+def rds_select(sql):
+    engine = create_engine("mysql+pymysql://experianusaa:K%k$ed13CISn@expn-cis-account-review-prod-mysql.cujqiiyaa11l.us-east-1.rds.amazonaws.com:3306/tracker") 
+    engine.echo = False
+    result = engine.execute(sql)
+    for r in result:  
+        print(r)
+    

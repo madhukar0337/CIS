@@ -1,0 +1,47 @@
+#!groovy
+import groovy.json.JsonSlurperClassic
+pipeline {
+	agent {
+		node {
+			label 'New-Linux'
+		}
+	}
+
+	environment {
+		def email = "madhukar.ponnala@experian.com"
+		def GRADLE_HOME = "/NAS/Common/BUILDTOOLS/gradle/gradle-6.1.1/bin"
+	}
+
+
+	tools {
+		gradle 'Gradle- 6-linux'
+		jdk 'JAVA_1.8_65-linux64'
+	}
+	stages {
+		stage('Local Build') {
+			steps {
+				echo "Local Build Started"
+				//Build locally
+				sh """#!/bin/bash
+				cd core
+				cd sunrise-atb-arf
+				${GRADLE_HOME}/gradle clean -x test build fatjar
+                ls -ltr
+				cd build/libs
+				ls -ltr
+                pwd				
+				"""
+			}
+		}
+	}
+	post{
+		failure {
+			echo "--------------------Send failure email--------------------"
+			emailext mimeType: 'text/html', body: 'ERROR: Gradle Build Failed', recipientProviders: [requestor()], subject: '$DEFAULT_SUBJECT', to: 'email'
+		}
+		success{
+			echo "--------------------Send success email--------------------"
+			emailext mimeType: 'text/html', body: '$DEFAULT_CONTENT', recipientProviders: [requestor()], subject: '$DEFAULT_SUBJECT', to: 'email'
+		}
+	}	
+}

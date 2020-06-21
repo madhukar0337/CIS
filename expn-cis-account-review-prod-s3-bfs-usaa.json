@@ -1,0 +1,68 @@
+{
+    "Rules": [
+        {
+            "Filter": {
+                "Prefix": "daily-pinning"
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 45,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "Bfs-Daily pinning files"
+        },
+        {
+            "Filter": {
+                "Prefix": "monthly-pinning"
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 45,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "Bfs-Monthly pinning file"
+        },
+        {
+            "Filter": {
+                "Prefix": "daily-gvap-pinning"
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 45,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "Bfs-Daily-gvap-pinning"
+        },
+        {
+            "Filter": {
+                "Prefix": "monthly-gvap-pinning"
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 45,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "Bfs-Monthly-gvap-pinning"
+        }
+    ]
+}

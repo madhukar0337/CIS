@@ -1,0 +1,36 @@
+{
+    "Rules": [
+        {
+            "Filter": {
+                "Prefix": "consumer-consolidated-files/"
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 30,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "consumer-consolidated-files"
+        },
+        {
+            "Filter": {
+                "Prefix": "strategy-files/"
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 90,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "Expiration": {
+                "Days": 365
+            },
+            "ID": "strategy-files"
+        }
+    ]
+}

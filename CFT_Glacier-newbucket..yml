@@ -1,0 +1,66 @@
+#S3 bucket Lifecycle policy
+Description: Stack to create and s3bucket with life cyclerule
+Parameters:
+  pLifeCyclePolicySelection:
+    Type: String
+    Description: "apply policyone to move to glacier after 1 day. Policytwo: apply policy to move to deep archive after 2 days. Policythree: apply policy to move to glacier after 1 day, and purge after"
+    Default: policyone
+    AllowedValues:
+      - policythree
+      - policytwo
+      - policyone
+  pS3BucketName:
+    Description: S3Bucket Name
+    Type: String
+    Default: 'expn-cis-account-review-dev-test'
+Conditions:
+  cIsAnewBucket: !Equals [!Ref pLifeCyclePolicySelection, policyone]
+  cIsAnewBuckettwo: !Equals [!Ref pLifeCyclePolicySelection, policytwo]
+  cIsAnewBucketthree: !Equals [!Ref pLifeCyclePolicySelection, policythree]
+Resources:
+  rpolicyone:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Condition: cIsAnewBucket
+    Properties:
+      BucketName: !Ref pS3BucketName
+      LifecycleConfiguration:
+        Rules:
+        - Id: GlacierRule
+          Prefix: policy1
+          Status: Enabled
+          ExpirationInDays: '3'
+          Transitions:
+            - TransitionInDays: '1'
+              StorageClass: GLACIER
+  rpolicytwo:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Condition: cIsAnewBuckettwo
+    Properties:
+      BucketName: !Ref pS3BucketName
+      LifecycleConfiguration:
+        Rules:
+        - Id: DEEP_ARCHIVE
+          Prefix: policy2
+          Status: Enabled
+          ExpirationInDays: '3'
+          Transitions:
+            - TransitionInDays: '1'
+              StorageClass: DEEP_ARCHIVE
+  rpolicythree:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Condition: cIsAnewBucketthree
+    Properties:
+      BucketName: !Ref pS3BucketName
+      LifecycleConfiguration:
+        Rules:
+        - Id: GlacierRule
+          Prefix: policy3
+          Status: Enabled
+          ExpirationInDays: '3'
+          Transitions:
+            - TransitionInDays: '1'
+              StorageClass: GLACIER
+

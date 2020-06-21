@@ -1,0 +1,59 @@
+
+        {
+    "Version": "2012-10-17",
+    "Id": "S3BucketPolicyexpn-expn-cis-usaa-data-us-east-1",
+    "Statement": [
+        {
+            "Sid": "MapProdRedshiftRole",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::726805105719:role/s3-sync-cross-acount"
+            },
+            "Action": [
+                "s3:List*",
+                "s3:GetObject",
+                "s3:PutObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::test-s3-bucket-123",
+                "arn:aws:s3:::test-s3-bucket-123/*"
+            ]
+        },
+        {
+            "Sid": "DenyIncorrectEncryptionHeader",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::test-s3-bucket-123/*",
+            "Condition": {
+                "StringNotEquals": {
+                    "s3:x-amz-server-side-encryption": "AES256"
+                }
+            }
+        },
+        {
+            "Sid": "DenyUnEncryptedObjectUploads",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::test-s3-bucket-123/*",
+            "Condition": {
+                "Null": {
+                    "s3:x-amz-server-side-encryption": "true"
+                }
+            }
+        },
+        {
+            "Sid": "DenyNonSSLAccess",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::test-s3-bucket-123/*",
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "false"
+                }
+            }
+        }
+    ]
+}

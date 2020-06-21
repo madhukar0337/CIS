@@ -1,0 +1,39 @@
+          {
+            "Sid": "Stmt902577807644",
+            "Effect": "Deny",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:sts::902577807644:assumed-role/AWS-Ascend-AccountReview-Developer/C55181A",
+                    "arn:aws:sts::902577807644:assumed-role/AWS-Ascend-AccountReview-Developer/C57747A",
+                    "arn:aws:sts::902577807644:assumed-role/AWS-Ascend-AccountReview-Developer/C56478A",
+                    "arn:aws:sts::902577807644:assumed-role/AWS-Ascend-AccountReview-Developer/C62567A"
+                ]
+            },
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-account-review-prod-s3-code",
+            "Condition": {
+                "StringLike": {
+                    "s3:prefix": [
+                        "prod",
+                        "prod/*"
+                    ]
+                }
+            }
+        }
+       
+          
+        {
+            "Sid": "Stmt902577807644",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-account-review-prod-s3-code",
+            "Condition": {
+                "StringLike": {
+                    "s3:prefix": [
+                        "prod",
+                        "prod/*"
+                    ]
+                }
+            }
+        } 

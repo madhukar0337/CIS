@@ -1,0 +1,46 @@
+{
+    "Rules": [
+        {
+            "Filter": {
+                "Prefix": "policy1/Version1/"
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 1,
+                    "StorageClass": "S3 Glacier"
+                }
+            ],
+            "ID": "policy1/Version1-rule"
+        },
+        {
+            "Filter": {
+                "Prefix": "policy2/Version2/New/"
+            },
+            "Status": "Enabled",
+            "Transitions": [
+                {
+                    "Days": 1,
+                    "StorageClass": "DEEP_ARCHIVE"
+                }
+            ],
+            "ID": "policy2/Version2/New-rule"
+        },
+      {
+        "Filter": {
+          "Prefix": "policy3/"
+        },
+        "Status": "Enabled",
+        "Transitions": [
+          {
+            "Days": 1,
+            "StorageClass": "S3 Glacier"
+          }
+        ],
+        "Expiration": {
+          "Days": 5
+        },
+        "ID": "policy3-rule"
+      }
+    ]
+}

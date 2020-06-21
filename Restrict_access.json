@@ -1,0 +1,34 @@
+        {
+            "Sid": "Stmt121922704398",
+            "Effect": "Deny",
+            "NotPrincipal": {
+                "AWS": "arn:aws:sts::121922704398:assumed-role/AWS-Ascend-Acct-Review-Developer/C62567A"
+            },
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-account-review-dev-input",
+            "Condition": {
+                "StringLike": {
+                    "s3:prefix": [
+                        "policy1/Version1/policy",
+                        "policy1/Version1/policy/*"
+                    ]
+                }
+            }
+        }
+
+#########################################################################
+
+        {
+            "Sid": "Stmt121922704398",
+            "Effect": "Deny",
+            "NotPrincipal": {
+                "AWS": [
+                    "arn:aws:sts::121922704398:assumed-role/AWS-Ascend-Acct-Review-Developer/C62567A"
+                ]
+            },
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::expn-cis-account-review-dev-input/policy1/Version1/policy",
+                "arn:aws:s3:::expn-cis-account-review-dev-input/policy1/Version1/policy/*"
+            ]
+        }

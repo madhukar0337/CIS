@@ -1,0 +1,52 @@
+#!groovy
+pipeline {
+	agent {
+		node {
+		    //label   'New-Linux'
+		    label 'DEV-L64-B3||DEV-L64-B4'
+			//label 'DEV-L64-B1||DEV-L64-B2||DEV-L64-B3||DEV-L64-B4||DEV-L64-B5||DEV-L64-B6||DEV-L64-B7'
+		}
+	}
+
+	environment {
+		def resource_path = "${RESOURCE_PATH}"
+		def project_env = "${ENV}"
+		def service = "${SERVICE}"
+        def file_name = "${FILE_NAME}"
+        def arf = "${ARF}"
+        def email = "${EMAIL}"
+        def file_splitted = ""
+        def report_path = ""
+        def apigee = "${APIGEE}"
+        def apigee_user = "${APIGEE_USER}"
+        def apigee_password = "${APIGEE_PASSWORD}"
+        def htmlSummary = ""
+        def build_ok = true
+	}
+
+	stages {
+		
+				
+		stage('Create Virtual Env and Install Dependency') {
+			steps {
+				script {
+    				sh """#!/bin/bash
+    				    virtualenv -p python3.6 apihub-qa-env
+                        source apihub-qa-env/bin/activate
+                        python -m pip install -r requirements.txt
+    				"""
+				}
+			}
+		}
+
+
+
+	
+
+		
+
+		
+	}
+
+
+}

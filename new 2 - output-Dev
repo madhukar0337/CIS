@@ -1,0 +1,22 @@
+Account review prod ----- To be created
+expn-cis-account-review-prod-s3-pinning-repo --- Used  cis-us-ar-from-usaa    policies
+
+Renaming--
+expn-cis-account-review-prod-s3-code – Used  cis-us-ar-code  Policies
+expn-cis-account-review-prod-s3-automation – Used  cis-us-ar-automation  Policies
+expn-cis-account-review-prod-s3-input   -- Used  cis-us-ar-usaa-output  Policies
+expn-cis-account-review-prod-s3-output  -- Used  cis-us-ar-usaa-output  Policies
+expn-cis-account-review-prod-s3-emr -- Used  cis-us-ar-emr  Policies
+
+Account review prod--To be created--Preselect 
+expn-cis-preselect-prod-s3-code -- Used  cis-us-ar-code  Policies
+expn-cis-preselect-prod-s3-automation -- Used  cis-us-ar-automation  Policies
+expn-cis-preselect-prod-s3-input  -- Used  cis-us-ar-usaa-output  Policies
+expn-cis-preselect-prod-s3-output – Bucket already Existed 
+expn-cis-preselect-prod-s3-emr – Used  cis-us-ar-emr   Policies
+
+Need approval from USAA
+expn-cis-preselect-prod-s3-bfs-usaa – Used   cis-us-ar-ascend-bfs-usaa   Policies 
+expn-cis-account-review-prod-s3-to-usaa -- Used   cis-us-ar-to-usaa   Policies
+expn-cis-account-review-prod-s3-from-usaa – Used   cis-us-ar-from-usaa   Policies
+expn-cis-account-review-prod-s3-bfs-usaa -- Used   cis-us-ar-ascend-bfs-usaa   Policies

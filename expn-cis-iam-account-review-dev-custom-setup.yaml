@@ -1,0 +1,685 @@
+#Experian CIS - Ascend Sandbox
+#IAM Client Custom Template
+#Jerome Chadee
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates IAM Roles, Groups and Polices for CIS Organization Member Accounts
+Parameters:
+  ClientName:
+    Type: String
+    Description: Name of Client
+  pEnvironment:
+    Description: dev, stage, prod, qa, uat
+    Type: String
+    Default: prod
+    AllowedValues:
+      - dev
+      - qa
+      - stage
+      - uat
+      - prod
+  DevSecOpsAccountNumber:
+    Description: AWS Account Number for DevSecOps Account
+    Type: String
+    MaxLength: 12
+    MinLength: 12
+    AllowedPattern: "[0-9]+"
+    Default: "528150397796"
+  ArtifactStoreBucketName:
+    Description: S3 Bucket in Tools Account, which holds the artifacts built by codebuild
+    Type: String
+    Default: "expn-cis-codepipeline-artifact"
+  CMKARN:
+    Description: ARN of the KMS CMK creates in DevSecOps account
+    Type: String
+    Default: "arn:aws:kms:us-east-1:528150397796:key/4acb996c-a8b6-438f-9e87-53b3b04078cf"
+Resources:
+  EMREC2DefaultRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['', ['EMR_EC2_DefaultRole', !Ref 'ClientName', !Ref 'pEnvironment']]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+  EMREC2DefaultRoleInstaceProfile:
+    DependsOn: EMREC2DefaultRole
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref EMREC2DefaultRole
+      InstanceProfileName: !Ref EMREC2DefaultRole
+  EMRDefaultRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['', ['EMR_DefaultRole', !Ref 'ClientName', !Ref 'pEnvironment']]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - elasticmapreduce.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceRole
+      Path: "/"
+  EMRDefaultRoleInstaceProfile:
+    DependsOn: EMRDefaultRole
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref EMRDefaultRole
+      InstanceProfileName: !Ref EMRDefaultRole
+  EMRAutoScalingDefaultRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['', ['EMR_AutoScaling_DefaultRole', !Ref 'ClientName', !Ref 'pEnvironment']]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - elasticmapreduce.amazonaws.com
+            - application-autoscaling.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceforAutoScalingRole
+      Path: "/"
+  EMRAutoScalingDefaultRoleInstaceProfile:
+    DependsOn: EMRAutoScalingDefaultRole
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref EMRAutoScalingDefaultRole
+      InstanceProfileName: !Ref EMRAutoScalingDefaultRole
+#EC2-ROLES
+  SASEC2CustomRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['-', ['expn-cis-ec2-sas-custom-role', !Ref 'ClientName', !Ref 'pEnvironment']]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
+      Policies:
+      - PolicyName: !Join ['-', ['expn-sas-s3-access', !Ref 'ClientName', !Ref 'pEnvironment']]
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Sid: Stmt1458923097000
+            Effect: Allow
+            Action:
+            - cloudtrail:LookupEvents
+            Resource:
+            - '*'
+          - Sid: S3Buckets
+            Effect: Allow
+            Action:
+              - s3:List*
+              - s3:GetObject
+            Resource:
+              - !Sub arn:aws:s3:::expn-cis-map-${ClientName}-prod-s3-output
+              - !Sub arn:aws:s3:::expn-cis-map-${ClientName}-prod-s3-output/*
+      Path: "/"
+  SASEC2CustomRoleInstanceProfile:
+    DependsOn: SASEC2CustomRole
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref SASEC2CustomRole
+      InstanceProfileName: !Ref SASEC2CustomRole
+#LAMBDA AUTOMATION ROLE
+  rLambdaAutomationRole:
+    Type: AWS::IAM::Role
+    Metadata:
+     cfn_nag:
+       rules_to_suppress:
+         - id: F3
+           reason: "This will be re-visited to remove all the privilege actions"
+    Properties:
+      RoleName: !Join ['', ['LambdaAutomationRole', !Ref 'ClientName', !Ref 'pEnvironment']]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Policies:
+      - PolicyName: !Join ['', ['LambdaDefaultAutomationAccess', !Ref 'ClientName', !Ref 'pEnvironment']]
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Sid: Stmt1458923097000
+            Effect: Allow
+            Action:
+            - cloudtrail:LookupEvents
+            Resource:
+            - '*'
+          - Sid: StmAccessLogs
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - cloudwatch:PutMetricData
+            Resource:
+            - '*'
+          - Sid: IAM
+            Effect: Allow
+            Action:
+            - iam:List*
+            - iam:Get*
+            - iam:PassRole
+            - iam:CreateRole
+            - iam:PutRolePolicy
+            - iam:AttachRolePolicy
+            - iam:DetachRolePolicy
+            - iam:DeleteRolePolicy
+            - iam:DeleteRole
+            - iam:ListRoles
+            Resource:
+            - '*'
+          - Sid: EMR
+            Effect: Allow
+            Action:
+            - elasticmapreduce:DescribeStep
+            - elasticmapreduce:ListInstances
+            - elasticmapreduce:ListSteps
+            - elasticmapreduce:ListClusters
+            - elasticmapreduce:Create*
+            - elasticmapreduce:DescribeCluster
+            - elasticmapreduce:AddJobFlowSteps
+            - elasticmapreduce:DescribeJobFlows
+            - elasticmapreduce:TerminateJobFlows
+            - elasticmapreduce:RunJobFlow
+            Resource:
+            - '*'
+          - Sid: ec2
+            Effect: Allow
+            Action:
+            - ec2:*
+            Resource:
+            - '*'
+          - Sid: ec2Deny
+            Effect: Deny
+            Action:
+            - ec2:*Vpc*
+            - ec2:*Vpn*
+            - ec2:*NetworkAcl*
+            - ec2:*InternetGateway*
+            - ec2:*NetworkInterface*
+            - ec2:*Subnet*
+            - ec2:*SecurityGroup*
+            - ec2:*RouteTable*
+            - ec2:*KeyPair*
+            Resource:
+            - '*'
+          - Sid: SNS
+            Effect: Allow
+            Action:
+            - sns:*
+            Resource:
+            - '*'
+          - Sid: SES
+            Effect: Allow
+            Action:
+            - ses:*
+            Resource:
+            - '*'
+          - Sid: StepFunctions
+            Effect: Allow
+            Action:
+            - states:*
+            Resource:
+            - '*'
+          - Sid: KMS
+            Effect: Allow
+            Action:
+            - kms:Create*
+            - kms:Put*
+            - kms:DeleteAlias
+            - kms:Describe*
+            - kms:Get*
+            - kms:List*
+            - kms:Update*
+            - kms:TagResource
+            - kms:UntagResource
+            - kms:ScheduleKeyDeletion
+            - kms:CancelKeyDeletion
+            Resource:
+            - '*'
+          - Sid: AthenaGlue
+            Effect: Allow
+            Action:
+            - athena:*
+            - glue:*
+            Resource:
+            - '*'
+          - Sid: StmtSNSPublish
+            Effect: Allow
+            Action:
+            - sns:Publish
+            Resource:
+            - '*'
+          - Sid: Lambda
+            Effect: Allow
+            Action:
+            - Lambda:InvokeFunction
+            - lambda:CreateFunction
+            - lambda:DeleteFunction
+            - lambda:GetFunctionConfiguration
+            - lambda:PutFunctionConcurrency
+            - lambda:InvokeAsync
+            - lambda:InvokeFunction
+            Resource:
+            - '*'
+          - Sid: CloudFormation
+            Effect: Allow
+            Action:
+            - cloudformation:CreateStack
+            - cloudformation:DeleteStack
+            - cloudformation:DescribeStackEvents
+            - cloudformation:DescribeStacks
+            - cloudformation:GetTemplateSummary
+            - cloudformation:SetStackPolicy
+            - cloudformation:ValidateTemplate
+            - cloudformation:UpdateStack
+            - cloudformation:DescribeStackResource
+            - cloudformation:DescribeStackResources
+            - cloudformation:GetTemplate
+            - cloudformation:List*
+            Resource:
+            - '*'
+          - Sid: S3Buckets
+            Effect: Allow
+            Action:
+              - s3:List*
+              - s3:GetObject
+              - s3:PutObject
+            Resource:
+              - arn:aws:s3:::expn-cis-*-output
+              - arn:aws:s3:::expn-cis-*-output/*
+              - arn:aws:s3:::expn-cis-*-input/*
+              - arn:aws:s3:::expn-cis-*-input/*
+              - arn:aws:s3:::expn-cis-*-emr/*
+  rLambdaBasicExecutionRole:
+    Type: AWS::IAM::Role
+    Metadata:
+     cfn_nag:
+       rules_to_suppress:
+         - id: F3
+           reason: "This will be re-visited to remove all the privilege actions"
+    Properties:
+      RoleName: !Join ['', ['LambdaBasicExecutionRole', !Ref 'ClientName', !Ref 'pEnvironment']]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+      - PolicyName: !Join ['', ['LambdaAutomationAccess', !Ref 'ClientName', !Ref 'pEnvironment']]
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Sid: Stmt1458923097000
+            Effect: Allow
+            Action:
+            - cloudtrail:LookupEvents
+            Resource:
+            - '*'
+          - Sid: StmAccessLogs
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - cloudwatch:PutMetricData
+            Resource:
+            - '*'
+          - Sid: S3Buckets
+            Effect: Allow
+            Action:
+              - s3:List*
+              - s3:GetObject
+              - s3:PutObject
+            Resource:
+              - arn:aws:s3:::expn-cis-*-output
+              - arn:aws:s3:::expn-cis-*-output/*
+      Path: "/"
+#REDSHIFT ROLES
+  RedShiftClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['-', ['expn-cis-redshift', !Ref 'ClientName', !Ref 'pEnvironment', 'copy-unload']]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - redshift.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSGlueConsoleFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+      Path: "/"
+  RedShiftClusterRoleInstaceProfile:
+    DependsOn: RedShiftClusterRole
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref RedShiftClusterRole
+      InstanceProfileName: !Ref RedShiftClusterRole
+#POLICIES
+  EMRS3Policy:
+    Type: AWS::IAM::ManagedPolicy
+    Metadata:
+     cfn_nag:
+       rules_to_suppress:
+         - id: F5
+           reason: "This will be re-visited to remove all the privilege actions"
+         - id: W13
+           reason: "This will be re-visited to control access to restricted resources"
+    Properties:
+      ManagedPolicyName: !Join ['', ['expn-cis-emr-s3-', !Ref 'ClientName', !Ref 'pEnvironment']]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: S3Limited
+            Effect: Deny
+            Action:
+              - s3:ListBucket
+              - s3:GetObject
+            Resource:
+              - !Sub arn:aws:s3:::expn-cis-*-${pEnvironment}-input
+#            Condition:
+#              StringNotLike:
+#                s3:prefix:
+#                  - reloads-post-schema-changes/*
+#                  - ecfc17_clear_risk/*
+          - Sid: S3EMRBuckets
+            Effect: Allow
+            Action:
+              - s3:List*
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+            Resource:
+              - !Sub arn:aws:s3:::expn-cis-*-${pEnvironment}-output
+              - !Sub arn:aws:s3:::expn-cis-*-${pEnvironment}*emr
+      Roles:
+        -
+          !Ref EMREC2DefaultRole
+  EMREncryptionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Metadata:
+     cfn_nag:
+       rules_to_suppress:
+         - id: F5
+           reason: "This will be re-visited to remove all the privilege actions"
+         - id: W13
+           reason: "This will be re-visited to control access to restricted resources"
+    Properties:
+      ManagedPolicyName: !Join ['', ['expn-cis-emr-encryption-', !Ref 'ClientName', !Ref 'pEnvironment']]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: KMSActions
+            Effect: Allow
+            Action:
+              - kms:GenerateDataKey
+              - kms:GenerateDataKeyWithoutPlaintext
+              - kms:GenerateRandom
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:Put*
+              - kms:ScheduleKeyDeletion
+              - kms:CancelKeyDeletion
+              - kms:Describe*
+              - kms:Revoke*
+              - kms:Disable*
+              - kms:Enable*
+              - kms:Delete*
+              - kms:List*
+              - kms:Update*
+              - kms:Create*
+            Resource: "*"
+      Roles:
+        -
+          !Ref EMRDefaultRole
+        -
+          !Ref EMREC2DefaultRole
+  EMRMainPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Metadata:
+     cfn_nag:
+       rules_to_suppress:
+         - id: F5
+           reason: "This will be re-visited to remove all the privilege actions"
+         - id: W13
+           reason: "This will be re-visited to control access to restricted resources"
+    Properties:
+      ManagedPolicyName: !Join ['', ['expn-cis-emr-main-', !Ref 'ClientName', !Ref 'pEnvironment']]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: S3ListMyBuckets
+            Effect: Allow
+            Action:
+              - s3:ListAllMyBuckets
+              - s3:GetBucketLocation
+            Resource: "*"
+          - Sid: S3EMRBuckets
+            Effect: Allow
+            Action:
+              - s3:List*
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+            Resource: "*"
+          - Sid: EMRMainActions
+            Effect: Allow
+            Action:
+              - kms:GenerateDataKey
+              - cloudwatch:*
+              - dynamodb:*
+              - ec2:AuthorizeSecurityGroupEgress
+              - ec2:AuthorizeSecurityGroupIngress
+              - ec2:CancelSpotInstanceRequests
+              - ec2:CreateNetworkInterface
+              - ec2:CreateSecurityGroup
+              - ec2:CreateTags
+              - ec2:DeleteNetworkInterface
+              - ec2:DeleteSecurityGroup
+              - ec2:DeleteTags
+              - ec2:DescribeAvailabilityZones
+              - ec2:DescribeAccountAttributes
+              - ec2:DescribeDhcpOptions
+              - ec2:DescribeInstanceStatus
+              - ec2:DescribeInstances
+              - ec2:DescribeKeyPairs
+              - ec2:DescribeNetworkAcls
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DescribePrefixLists
+              - ec2:DescribeRouteTables
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeSpotInstanceRequests
+              - ec2:DescribeSpotPriceHistory
+              - ec2:DescribeSubnets
+              - ec2:DescribeVpcAttribute
+              - ec2:DescribeVpcEndpoints
+              - ec2:DescribeVpcEndpointServices
+              - ec2:DescribeVpcs
+              - ec2:DetachNetworkInterface
+              - ec2:ModifyImageAttribute
+              - ec2:ModifyInstanceAttribute
+              - ec2:RequestSpotInstances
+              - ec2:RevokeSecurityGroupEgress
+              - ec2:RunInstances
+              - ec2:TerminateInstances
+              - ec2:DeleteVolume
+              - ec2:DescribeVolumeStatus
+              - ec2:DescribeVolumes
+              - ec2:DetachVolume
+              - iam:GetRole
+              - iam:GetRolePolicy
+              - iam:ListInstanceProfiles
+              - iam:ListRolePolicies
+              - iam:PassRole
+              - sdb:BatchPutAttributes
+              - sdb:Select
+              - sqs:CreateQueue
+              - sqs:Delete*
+              - sqs:GetQueue*
+              - sqs:PurgeQueue
+              - sqs:ReceiveMessage
+              - cloudwatch:PutMetricAlarm
+              - cloudwatch:DescribeAlarms
+              - cloudwatch:DeleteAlarms
+              - application-autoscaling:RegisterScalableTarget
+              - application-autoscaling:DeregisterScalableTarget
+              - application-autoscaling:PutScalingPolicy
+              - application-autoscaling:DeleteScalingPolicy
+              - application-autoscaling:Describe*
+            Resource: "*"
+      Roles:
+        -
+          !Ref EMRDefaultRole
+  EMREC2Policy:
+    Type: AWS::IAM::ManagedPolicy
+    Metadata:
+     cfn_nag:
+       rules_to_suppress:
+         - id: F5
+           reason: "This will be re-visited to remove all the privilege actions"
+         - id: W13
+           reason: "This will be re-visited to control access to restricted resources"
+    Properties:
+      ManagedPolicyName: !Join ['', ['expn-cis-emr-ec2-', !Ref 'ClientName', !Ref 'pEnvironment']]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: S3ListMyBuckets
+            Effect: Allow
+            Action:
+              - s3:ListAllMyBuckets
+              - s3:GetBucketLocation
+            Resource: "*"
+          - Sid: S3ListBucket
+            Effect: Allow
+            Action:
+              - s3:ListBucket
+            Resource: "*"
+          - Sid: S3EMRBuckets
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+            Resource: "*"
+          - Sid: S3EMRGetBuckets
+            Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource: "*"
+          - Sid: EMREC2MainActions
+            Effect: Allow
+            Action:
+              - kms:GenerateDataKey
+              - cloudwatch:*
+              - dynamodb:*
+              - ec2:Describe*
+              - elasticmapreduce:Describe*
+              - elasticmapreduce:TerminateJobFlows
+              - elasticmapreduce:ListBootstrapActions
+              - elasticmapreduce:ListClusters
+              - elasticmapreduce:ListInstanceGroups
+              - elasticmapreduce:ListInstances
+              - elasticmapreduce:ListSteps
+              - elasticmapreduce:AddJobFlowSteps
+              - kinesis:CreateStream
+              - kinesis:DeleteStream
+              - kinesis:DescribeStream
+              - kinesis:GetRecords
+              - kinesis:GetShardIterator
+              - kinesis:MergeShards
+              - kinesis:PutRecord
+              - kinesis:SplitShard
+              - rds:Describe*
+              - sdb:*
+              - sns:*
+              - sqs:*
+              - glue:CreateDatabase
+              - glue:UpdateDatabase
+              - glue:DeleteDatabase
+              - glue:GetDatabase
+              - glue:GetDatabases
+              - glue:CreateTable
+              - glue:UpdateTable
+              - glue:DeleteTable
+              - glue:GetTable
+              - glue:GetTables
+              - glue:GetTableVersions
+              - glue:CreatePartition
+              - glue:BatchCreatePartition
+              - glue:UpdatePartition
+              - glue:DeletePartition
+              - glue:BatchDeletePartition
+              - glue:GetPartition
+              - glue:GetPartitions
+              - glue:BatchGetPartition
+              - glue:CreateUserDefinedFunction
+              - glue:UpdateUserDefinedFunction
+              - glue:DeleteUserDefinedFunction
+              - glue:GetUserDefinedFunction
+              - glue:GetUserDefinedFunctions"
+              - cloudformation:List*
+              - cloudformation:Delete*
+              - ec2:DeleteSecurityGroup
+              - lambda:InvokeFunction
+              - logs:DeleteLogGroup
+              - lambda:DeleteFunction
+              - iam:DetachRolePolicy
+              - elasticmapreduce:DeleteSecurityConfiguration
+              - kms:ScheduleKeyDeletion
+              - kms:DescribeKey
+            Resource: "*"
+      Roles:
+        -
+          !Ref EMREC2DefaultRole
+Outputs:
+  StackName:
+      Description: Name of the current stack used for client CloudWatch Log Data Collection
+      Value: !Ref 'AWS::StackName'

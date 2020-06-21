@@ -1,0 +1,114 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: S3 bucket for the R8 Client VPC environment
+Parameters:
+  pS3BucketName:
+      Description: S3Bucket Name
+      Type: String
+  pRestrictByVPC:
+      Default: false
+      Description: VPC to restrict S3 Access to
+      Type: String
+  pVPCId:
+      Description: VPC to restrict S3 Access to
+      Type: String
+Conditions:
+  cRestrictByVPC: !Equals [!Ref pRestrictByVPC, true]
+Resources:
+  rS3BucketPolicyWithVPC:
+    Type: AWS::S3::BucketPolicy
+    Condition: cRestrictByVPC
+    Properties:
+      Bucket: !Ref pS3BucketName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Id: ENFORCE-AES256-HTTPS
+        Statement:
+        - Sid: RestrictToVPC
+          Effect: Deny
+          Principal: "*"
+          Action: s3:*
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            StringNotEquals:
+              aws:sourceVpc: !Ref pVPCId
+        - Sid: DenyIncorrectEncryptionHeader
+          Effect: Deny
+          Principal: "*"
+          Action: s3:PutObject
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            StringNotEquals:
+              s3:x-amz-server-side-encryption: AES256
+        - Sid: DenyUnEncryptedObjectUploads
+          Effect: Deny
+          Principal: "*"
+          Action: s3:PutObject
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            'Null':
+              s3:x-amz-server-side-encryption: 'true'
+        - Sid: DenyNonSSLAccess
+          Effect: Deny
+          Principal: "*"
+          Action: s3:*
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            Bool:
+              aws:SecureTransport: 'false'
+        - Sid: RestrictToUsers
+          Effect: Deny
+          Principal: "*"
+          Action: s3:*
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            StringNotLike:
+              aws:userId:
+              - '581463129500'
+              - AROAIUPNKMHAO2UBVNTQQ:*
+              - AROAIUPNKMHAO2UBVNTQN:*
+              - AROAIUPNKMHAO2UBVNTQM:*
+  rS3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref pS3BucketName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Id: ENFORCE-AES256-HTTPS
+        Statement:
+        - Sid: DenyIncorrectEncryptionHeader
+          Effect: Deny
+          Principal: "*"
+          Action: s3:PutObject
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            StringNotEquals:
+              s3:x-amz-server-side-encryption: AES256
+        - Sid: DenyUnEncryptedObjectUploads
+          Effect: Deny
+          Principal: "*"
+          Action: s3:PutObject
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            'Null':
+              s3:x-amz-server-side-encryption: 'true'
+        - Sid: DenyNonSSLAccess
+          Effect: Deny
+          Principal: "*"
+          Action: s3:*
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            Bool:
+              aws:SecureTransport: 'false'
+        - Sid: RestrictToUsers
+          Effect: Deny
+          Principal: "*"
+          Action: s3:*
+          Resource: !Sub arn:aws:s3:::${pS3BucketName}/*
+          Condition:
+            StringNotLike:
+              aws:userId:
+              - '581463129500'
+              - AROAIZXVCY35C7NM7YGBC:*
+              - AROAJYUU5F362LNMOMPZG:*
+              - AIDAIXOEMBTS3ACJOO3RK
+              - AIDAJC4CIPMWUAXEYNSK2

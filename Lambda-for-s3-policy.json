@@ -1,0 +1,53 @@
+import boto3
+import datetime
+import os
+
+client = boto3.client('s3')
+
+
+
+def lambda_handler(event, context):
+    """Get a list of keys in an S3 bucket."""
+    response = client.put_bucket_lifecycle_configuration(
+    Bucket='expn-cis-account-review-dev-tests3',
+    LifecycleConfiguration={
+        'Rules': [
+            {
+                'ID': 'policy1-version1-rule',
+                'Prefix': 'policy1/version1',
+                'Status': 'Enabled',
+                'Transitions': [
+                    {
+                        'Days': 1,
+                        'StorageClass': 'S3 GLACIER'
+                    },
+                ],
+            },
+            {
+                'ID': 'policy2-rule',
+                'Prefix': 'objectname',
+                'Status': 'Enabled',
+                'Transitions': [
+                    {
+                        'Days': 1,
+                        'StorageClass': 'DEEP_ARCHIVE'
+                    },
+                ],
+            },
+            {
+                'Expiration': {
+                    'Days': 15,
+                },
+                'ID': 'policy3',
+                'Prefix': 'policy3',
+                'Status': 'Enabled',
+                'Transitions': [
+                    {
+                        'Days': 1,
+                        'StorageClass': 'S3 GLACIER'
+                    },
+                ],
+            },
+        ]
+    }
+)

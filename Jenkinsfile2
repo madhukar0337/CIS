@@ -1,0 +1,129 @@
+#!groovy
+
+					
+pipeline {
+    agent any
+	
+	      
+
+    stages {
+	    
+        stage('Cast Report and Check HR by HR plan') {
+            steps {
+                echo 'Building..'
+				echo " URL is ${URL_DASHBOARD}"
+				build (job: 'CIS/DevOps/Implementationdashboard3', parameters: [string(name: 'URL_DASHBOARD', value: "${URL_DASHBOARD}")])
+				script{
+				var5 = sh(returnStdout: true, script: 'cat /var/jenkins_home/workspace/CIS/DevOps/weeklyimplementationrelease/file_with_variablerow.txt | head -1')
+				echo var5.trim()
+			    TOTAL_ROW = var5  as Integer
+				}
+                      
+			}
+        }
+		
+	
+	 stage('Hr by HR plan executions') {
+	        steps {
+			   script{
+			   for (int i = 0; i < TOTAL_ROW; i++) {
+			   
+			    echo 'Building..'
+				echo " URL is ${URL_DASHBOARD}"
+				build (job: 'CIS/DevOps/Implementationdashboard3', parameters: [string(name: 'URL_DASHBOARD', value: "${URL_DASHBOARD}")])
+				script{
+				var1 = sh(returnStdout: true, script: 'cat /var/jenkins_home/workspace/CIS/DevOps/weeklyimplementationrelease/file_with_variabledsc.txt | head -1')
+                echo var1.trim()
+				DSC = var1    
+				var5 = sh(returnStdout: true, script: 'cat /var/jenkins_home/workspace/CIS/DevOps/weeklyimplementationrelease/file_with_variablerow.txt | head -1')
+				echo var5.trim()
+			    TOTAL_ROW = var5  as Integer
+			    var2 = sh(returnStdout: true, script: 'cat /var/jenkins_home/workspace/CIS/DevOps/weeklyimplementationrelease/file_with_variablevalue.txt | head -1')
+                echo var2.trim()
+				TABLE_ROW = var2  as Integer
+			    var3 = sh(returnStdout: true, script: 'cat /var/jenkins_home/workspace/CIS/DevOps/weeklyimplementationrelease/file_with_variablestatus.txt | head -1')
+				echo var3.trim()
+				STATUS = var3	
+				var4 = sh(returnStdout: true, script: 'cat /var/jenkins_home/workspace/CIS/DevOps/weeklyimplementationrelease/file_with_variableemail.txt | head -1')
+                echo var4.trim()
+				EMAIL = var4  
+			    name = sh(returnStdout: true, script: 'cat /var/jenkins_home/workspace/CIS/DevOps/weeklyimplementationrelease/file_with_variablename.txt | head -1')
+                echo name.trim()
+				NAME = name
+			    juser = sh(returnStdout: true, script: 'cat /var/jenkins_home/workspace/CIS/DevOps/weeklyimplementationrelease/file_with_variablejuser.txt | head -1')
+                echo juser.trim()
+				JUSER = juser
+			   
+				echo 'Deploying....'
+				emailext mimeType: 'text/html',
+                 subject: "[Jenkins]${currentBuild.fullDisplayName}",
+                 to: "jaime.emunoz@experian.com",
+                 body: '''<p>Hi '''+NAME+'''</p>'''+'''Please continue with task#'''+var2+'''<p> </p>'''+'''<p> </p>'''+'''<p>With Description</p>'''+var1+'''<p><a href="${BUILD_URL}input">click here to approve</a></p>'''
+                     
+					script { 
+                     def userInput = input id: 'submitter',
+                              message: 'Was the step result OK?', 
+                              submitterParameter: 'submitter',
+                              submitter: 'JUSER'
+                          }
+					
+					build job: 'CIS/DevOps/change board', parameters: [
+					   string(name: 'URL_DASHBOARD', value: "${URL_DASHBOARD}"), 
+					string(name: 'TABLE_ROW', value: "${TABLE_ROW}")
+					]
+					}
+					}
+					}
+					
+                 script{				 
+					sh "echo Release2"
+					}
+					}
+					}		  
+
+	
+	
+        stage('Closing Implementation') {
+            steps {
+			   script{
+			        sh '''
+                    if [ -f /var/jenkins_home/workspace/CIS/DevOps/weeklyimplementationrelease/file_with_variabledsc.txt]
+                    then
+                    echo "File available"
+                    else
+                    echo "File not available"
+                    fi
+                    '''
+                    var1 = sh(returnStdout: true, script: 'cat /var/jenkins_home/workspace/CIS/DevOps/weeklyimplementationrelease/file_with_variabledsc.txt | head -1')
+                    var2 = sh(returnStdout: true, script: 'cat /var/jenkins_home/workspace/CIS/DevOps/weeklyimplementationrelease/file_with_variablevalue.txt | head -1')
+					var3 = sh(returnStdout: true, script: 'cat /var/jenkins_home/workspace/CIS/DevOps/weeklyimplementationrelease/file_with_variablestatus.txt | head -1')
+					var4 = sh(returnStdout: true, script: 'cat /var/jenkins_home/workspace/CIS/DevOps/weeklyimplementationrelease/file_with_variableemail.txt | head -1')
+                    var5 = sh(returnStdout: true, script: 'cat /var/jenkins_home/workspace/CIS/DevOps/weeklyimplementationrelease/file_with_variablerow.txt | head -1')
+                    echo var1.trim()
+					DSC = var1
+                    echo var2.trim()
+					TASK = var2
+					echo var3.trim()
+					STATUS = var3
+					echo var4.trim()
+					EMAIL = var4
+					echo var5.trim()
+			        TOTAL_ROW = var5  as Integer
+					for (int i = 0; i < TOTAL_ROW; i++) {
+						sh "echo Release"
+					}
+					}
+                
+				
+            }
+        }
+		
+		
+		
+
+    
+    
+	
+
+	}
+}

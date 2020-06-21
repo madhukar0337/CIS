@@ -1,0 +1,103 @@
+
+************************************* PROCESS MASTER*************************************************************************
+CREATE TABLE IF NOT EXISTS process_master (
+process_id INT  AUTO_INCREMENT PRIMARY KEY,
+process_name VARCHAR(255) NOT NULL
+)
+
+************************************* STRATEGY PROCESS TRACKER*************************************************************************
+CREATE TABLE IF NOT EXISTS strategy_process_tracker (
+process_id INT NOT NULL,
+process_name VARCHAR(255) NOT NULL,
+execution_date DATE NOT NULL,
+strategy_execution_ts VARCHAR(255) NOT NULL,
+input_file_date DATE  NULL,
+run_type VARCHAR(20) NOT NULL,
+ser_json_date DATE NULL,
+cluster_id VARCHAR(100)  NULL,
+pin_execution_ts VARCHAR(255) NULL,
+status VARCHAR(20) NULL,
+error_message TEXT NULL,
+start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+end_time TIMESTAMP NULL,
+CONSTRAINT Unq_strategy UNIQUE (process_id,process_name,execution_date,strategy_execution_ts,status)
+)
+
+************************************* SCORING PROCESS TRACKER*************************************************************************
+CREATE TABLE IF NOT EXISTS scoring_process_tracker (
+process_id INT NOT NULL,
+process_name VARCHAR(255) NOT NULL,
+execution_date DATE NOT NULL,
+execution_ts VARCHAR(255) NOT NULL,
+request_id VARCHAR(255) NOT NULL,
+strategy_execution_ts VARCHAR(255) NOT NULL,
+input_file_date DATE  NULL,
+run_type VARCHAR(20) NOT NULL,
+scoring_file_arrival_ts VARCHAR(255) NULL,
+trade_base_date DATE NOT NULL,
+model_type INT NULL,
+response_code INT,
+status VARCHAR(20) NULL,
+error_message TEXT NULL,
+CONSTRAINT Unq_scoring UNIQUE (process_id,process_name,request_id,strategy_execution_ts)
+)
+
+************************************* PIN MERGE PROCESS TRACKER**************************************************************************************************************************************************
+CREATE TABLE IF NOT EXISTS pin_merge_process_tracker (
+process_id INT NOT NULL,
+process_name VARCHAR(255) NOT NULL,
+execution_date DATE NOT NULL,
+pin_execution_ts VARCHAR(255) NOT NULL,
+pin_file_date DATE NOT NULL,
+status VARCHAR(20) NULL,
+error_message TEXT NULL,
+start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+end_time TIMESTAMP NULL,
+CONSTRAINT Unq_pin_scoring UNIQUE (process_id,process_name,execution_date,pin_file_date)
+)
+
+************************************* INPUT FILE TRACKER********************************************************************************************************************************************
+CREATE TABLE IF NOT EXISTS input_files_tracker (
+process_id INT NOT NULL,
+process_name VARCHAR(255) NOT NULL,
+input_file_date DATE NOT NULL,
+input_file_size BIGINT NOT NULL,
+status VARCHAR(20) NULL,
+error_message TEXT NULL,
+start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+end_time TIMESTAMP NULL,
+CONSTRAINT Unq_input_file UNIQUE (process_id,process_name,input_file_date)
+)
+
+************************************* STRATEGY SCHEDULE**************************************************************************************************************************************************
+CREATE TABLE IF NOT EXISTS strategy_schedule (
+process_id INT NOT NULL,
+process_name VARCHAR(255) NOT NULL,
+execution_date DATE NOT NULL,
+schedule_insertion_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+ser_json_date DATE NULL ,
+bureau_file_date DATE NULL,
+run_type VARCHAR(20) NOT NULL,
+status VARCHAR(20) NULL,
+CONSTRAINT Unq_schd UNIQUE (process_id,process_name,execution_date,run_type)
+)
+**********************************************************************************************************************
+
+INSERT INTO process_master(process_name) 
+VALUES 
+('consolidated_file_arrival'),
+('preprocess_day0'),
+('preprocess_day1'),
+('cli'),
+('bt'),
+('cld'),
+('pin_merge_daily'),
+('pin_merge_monthly'),
+('pin_extraction'),
+('metadata_scoring_request'),
+('GVAP_scoring_request'),
+('premier_score_request'),
+('fico_score_request'),
+('MaaS_bureau_file_arrival'),
+('GVAP_bureau_file_arrival'),
+('ser_json_file_arrival');

@@ -1,0 +1,125 @@
+{
+    "Version": "2012-10-17",
+    "Id": "S3BucketPolicyFull",
+    "Statement": [
+        {
+            "Sid": "S3Access",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::902577807644:role/AccountReviewLambdaAutomationRole",
+                    "arn:aws:iam::902577807644:role/EMR_EC2_DefaultRole"
+                ]
+            },
+            "Action": [
+                "s3:List*",
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-preselect-prod-s3-from-usaa-archive",
+                "arn:aws:s3:::expn-cis-preselect-prod-s3-from-usaa-archive/*"
+            ]
+        },
+        {
+            "Sid": "AcctRevDevEMRAccess",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "AROARYYZI2QHEPUBHCVG4"
+            },
+            "Action": [
+                "s3:List*",
+                "s3:GetObject",
+                "s3:PutObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-preselect-prod-s3-from-usaa-archive",
+                "arn:aws:s3:::expn-cis-preselect-prod-s3-from-usaa-archive/*"
+            ]
+        },
+        {
+            "Sid": "ListAccess",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::902577807644:role/sts-account-review",
+                    "arn:aws:iam::902577807644:user/SA02AREV"
+                ]
+            },
+            "Action": "s3:List*",
+            "Resource": "arn:aws:s3:::expn-cis-preselect-prod-s3-from-usaa-archive"
+        },
+        {
+            "Sid": "GetAccess",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::902577807644:role/sts-account-review",
+                    "arn:aws:iam::902577807644:user/SA02AREV"
+                ]
+            },
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::expn-cis-preselect-prod-s3-from-usaa-archive/*"
+        },
+        {
+            "Sid": "DenyIncorrectEncryptionHeader",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::expn-cis-preselect-prod-s3-from-usaa-archive/*",
+            "Condition": {
+                "StringNotEquals": {
+                    "s3:x-amz-server-side-encryption": "AES256"
+                }
+            }
+        },
+        {
+            "Sid": "DenyUnEncryptedObjectUploads",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::expn-cis-preselect-prod-s3-from-usaa-archive/*",
+            "Condition": {
+                "Null": {
+                    "s3:x-amz-server-side-encryption": "true"
+                }
+            }
+        },
+        {
+            "Sid": "DenyNonSSLAccess",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-preselect-prod-s3-from-usaa-archive/*",
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "false"
+                }
+            }
+        },
+        {
+            "Sid": "AllowedPrincipals",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-preselect-prod-s3-from-usaa-archive/*",
+            "Condition": {
+                "StringNotLike": {
+                    "aws:userId": [
+                        "root",
+                        "AROAJBEUCM6KENRW6DV3K:*",
+                        "AROAJJF6N45DN77T24HX4:*",
+                        "AROAI7S42YLFBRHWHKVBS:*",
+                        "AROAI7VBWBZNR4XVIEW5G:*",
+                        "AROAJ3ETN3K6A6KWKWJL2:*",
+                        "AROARYYZI2QHEPUBHCVG4:*",
+                        "AROA5EJOUMEOB4YHJQW4B:*",
+                        "AROA5EJOUMEOAJFEYMGVN:*",
+                        "AIDAIPFJN2UPXN6VTSR44"
+                    ]
+                }
+            }
+        }
+    ]
+}

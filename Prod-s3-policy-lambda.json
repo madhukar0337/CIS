@@ -1,0 +1,85 @@
+import boto3
+import datetime
+import os
+
+client = boto3.client('s3')
+
+
+
+def lambda_handler(event, context):
+    """Get a list of keys in an S3 bucket."""
+    response = client.put_bucket_lifecycle_configuration(
+    Bucket='expn-cis-account-review-prod-s3-from-usaa-archive',
+    LifecycleConfiguration={
+        'Rules': [
+            {
+                Expiration': {
+                    'Days': 365,
+                },
+                'ID': 'consumer-consolidated-files',
+                'Prefix': 'consumer-consolidated-files',
+                'Status': 'Enabled',
+                'Transitions': [
+                    {
+                        'Days': 30,
+                        'StorageClass': 'S3 GLACIER'
+                    },
+                ],
+            },
+            {
+                'Expiration': {
+                    'Days': 365,
+                },
+                'ID': 'strategy-files',
+                'Prefix': 'strategy-files',
+                'Status': 'Enabled',
+                'Transitions': [
+                    {
+                        'Days': 1,
+                        'StorageClass': 'S3 GLACIER'
+                    },
+                ],
+            },
+        ]
+    }
+    response = client.put_bucket_lifecycle_configuration(
+    Bucket='expn-cis-account-review-prod-s3-pinning-repo',
+    LifecycleConfiguration={
+        'Rules': [
+            {
+                Expiration': {
+                    'Days': 365,
+                },
+                'ID': 'Move to Glacier after 45 days-Pinning Repo',
+                'Prefix': '',
+                'Status': 'Enabled',
+                'Transitions': [
+                    {
+                        'Days': 45,
+                        'StorageClass': 'S3 GLACIER'
+                    },
+                ],
+            },
+        ]
+    }
+    response = client.put_bucket_lifecycle_configuration(
+    Bucket='expn-cis-account-review-prod-s3-pinning-repo',
+    LifecycleConfiguration={
+        'Rules': [
+            {
+                Expiration': {
+                    'Days': 365,
+                },
+                'ID': 'Move to Glacier after 30 days-Random Number',
+                'Prefix': '',
+                'Status': 'Enabled',
+                'Transitions': [
+                    {
+                        'Days': 45,
+                        'StorageClass': 'S3 GLACIER'
+                    },
+                ],
+            },
+        ]
+    }
+)

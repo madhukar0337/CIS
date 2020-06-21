@@ -1,0 +1,689 @@
+variable "aws_log_bucket" {
+  description = "Name of bucket for sandbox prod logging"
+  default     = "aws-logs-938727733271-us-east-1"
+}
+
+resource "aws_s3_bucket" "cis-us-server-repos" {
+  bucket = "cis-us-server-repos"
+
+  tags = merge(local.module_tags, map("Name", "cis-us-server-repos"))
+  logging {
+    target_bucket = var.aws_log_bucket
+    target_prefix = "logs/"
+  }
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm = "AES256"
+      }
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "cis-us-server-repos" {
+  bucket = "cis-us-server-repos"
+  policy = file("${path.module}/iam-files/cis-server-repos-policy.json")
+}
+
+
+
+resource "aws_s3_bucket" "cis-us-server-config" {
+  bucket = "cis-us-server-config"
+
+  tags = merge(local.module_tags, map("Name", "cis-us-server-config"))
+  logging {
+    target_bucket = var.aws_log_bucket
+    target_prefix = "logs/"
+  }
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm = "AES256"
+      }
+    }
+  }
+  replication_configuration {
+    role = "arn:aws:iam::938727733271:role/service-role/s3crr_role_for_cis-us-server-config_to_expn-cis-s3-us-west-2-asc"
+
+    rules {
+      id       = "NDMwMmZiZWItZjQyOS00MWEzLWEwYmYtN2NjNThiZGVjMjhj"
+      priority = 0
+      status   = "Enabled"
+      destination {
+        bucket        = "arn:aws:s3:::expn-cis-s3-us-west-2-ascend-dr-server-config"
+        storage_class = "STANDARD_IA"
+      }
+    }
+  }
+}
+
+
+
+resource "aws_s3_bucket_policy" "cis-us-server-config" {
+  bucket = "cis-us-server-config"
+  policy = file("${path.module}/iam-files/cis-server-config-policy.json")
+}
+
+
+resource "aws_s3_bucket" "expn-cis-ascend-sandbox-ascend-db-us-east-1" {
+  bucket = "expn-cis-ascend-sandbox-ascend-db-us-east-1"
+  acl    = "private"
+
+  tags = merge(local.module_tags, map("Name", "expn-cis-ascend-sandbox-db-us-east-1"))
+  logging {
+    target_bucket = var.aws_log_bucket
+    target_prefix = "logs/"
+  }
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        kms_master_key_id = aws_kms_key.expn-cis-ascend-sandbox-ascend-db-us-east-1-cmk.arn
+        sse_algorithm     = "aws:kms"
+      }
+    }
+  }
+  logging {
+    target_bucket = "aws-logs-938727733271-us-east-1"
+    target_prefix = "logs/"
+  }
+}
+
+resource "aws_s3_bucket_policy" "expn-cis-ascend-sandbox-ascend-db-us-east-1-bucket-policy" {
+  bucket = aws_s3_bucket.expn-cis-ascend-sandbox-ascend-db-us-east-1.id
+  policy = <<POLICY
+{
+    "Version": "2012-10-17",
+    "Id": "expn-cis-ascend-sandbox-ascend-db-us-east-1-bucket-policy",
+    "Statement": [
+        {
+            "Sid": "1",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::${var.ascend-sandbox-prod-account-id}:root"
+            },
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1"
+            ]
+        },
+        {
+            "Sid": "ReadOnlyAccess",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-Ascend-Sandbox-2-Prod"]}:root",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-CECL-MODELS"]}:root",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-MMSB-DEV"]}:root",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-ASCEND-DA-PROD"]}:root",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-DataLab-Prod"]}:root",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-MMSB-01"]}:root",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-CECL-MODELS-PROD"]}:root",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-USAA"]}:root",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-Citiretail-Prod"]}:root",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-Santander-Prod"]}:role/ascend-applications-instance-role",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-Santander-Prod"]}:role/ascend-emr-instance-role",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-WellsFargo-Prod"]}:role/ascend-applications-instance-role",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-WellsFargo-Prod"]}:role/ascend-emr-instance-role",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-Ascend-Sandbox-2-Dev"]}:root",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-Ascend-Customization-Amex"]}:root",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-MMSB-01"]}:role/AWSGlueServiceRole-BIS",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-BIS-Ascend_sandbox"]}:role/AWSGlueServiceRole-BIS"
+                ]
+            },
+            "Action": [
+                "s3:Get*",
+                "s3:List*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1"
+            ]
+        },
+        {
+            "Sid": "DenyUnSecureCommunications",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/*",
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "false"
+                }
+            }
+        },
+        {
+            "Sid": "Stmt1580420489814",
+            "Effect": "Deny",
+            "Principal": {
+                "AWS": [
+                   "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-ADS-NonProd"]}:role/11Test-Data-Read-Role",
+                   "${var.lending_point_data_role}"
+                ]
+            },
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1",
+            "Condition": {
+                "StringLike": {
+                    "s3:prefix": [
+                        "consumer",
+                        "consumer/*",
+                        "trade",
+                        "trade/*",
+                        "consumer_credit_inquiry",
+                        "consumer_credit_inquiry/*",
+                        "public_record",
+                        "public_record/*"
+                    ]
+                }
+            }
+        },
+        {
+            "Sid": "CapOneListBucket",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::528150397796:role/528150397796-Devops-Admin-Role",
+                    "arn:aws:iam::229358242047:role/CapOne-SPR-External_File_Gateway_Experian_Asc"
+                ]
+            },
+            "Action": "s3:List*",
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/*"
+            ]
+        },
+        {
+            "Sid": "AllowCapOnePrefix",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::528150397796:role/528150397796-Devops-Admin-Role",
+                    "arn:aws:iam::229358242047:role/CapOne-SPR-External_File_Gateway_Experian_Asc"
+                ]
+            },
+            "Action": "s3:GetObject*",
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/asset_insight/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/bankruptcy_plus/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/bustout/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/consumer/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/consumer_credit_inquiry/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/debt_to_income_insight/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/extended_trade/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/itmm_home_equity/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/itmm_mortgage/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/itmm_personal_finance/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/itmm_retail/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/itmm_student_loan/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/premier_1_2/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/premier_1_3/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/public_record/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/tec_v2/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/trade/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/trended_3d/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/trended_trade/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/vantage_3/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/vantage_4/*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-Ascend-AcctReview-Dev"]}:role/EMR_EC2_DefaultRolealldev"
+            },
+            "Action": [
+                "s3:List*",
+                "s3:Put*",
+                "s3:Get*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/*"
+            ]
+        },
+        {
+            "Sid": "AdsDataRead",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                   "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-ADS-NonProd"]}:role/11Test-Data-Read-Role",
+                   "${var.lending_point_data_role}",
+                   "arn:aws:iam::229358242047:role/CapOne-SPR-External_File_Gateway_Experian_Asc"
+                ]
+            },
+            "Action": [
+                "s3:List*",
+                "s3:Get*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1/*"
+            ]
+        },
+        {
+            "Sid": "Stmt121922704398",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-Ascend-AcctReview-Dev"]}:role/EMR_EC2_DefaultRolealldev"
+            },
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-db-us-east-1",
+            "Condition": {
+                "StringLike": {
+                    "s3:prefix": [
+                        "consumer",
+                        "consumer/*"
+                    ]
+                }
+            }
+        }
+    ]
+}
+POLICY
+}
+
+resource "aws_s3_bucket" "expn-cis-ascend-sandbox-ascend-lite-db-us-east-1" {
+  bucket = "expn-cis-ascend-sandbox-ascend-lite-db-us-east-1"
+  acl    = "private"
+
+  tags = merge(local.module_tags, map("Name", "expn-cis-ascend-sandbox-ascend-lite-db-us-east-1"))
+  logging {
+    target_bucket = var.aws_log_bucket
+    target_prefix = "logs/"
+  }
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        kms_master_key_id = aws_kms_key.expn-cis-ascend-sandbox-ascend-lite-db-us-east-1-cmk.arn
+        sse_algorithm     = "aws:kms"
+      }
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "expn-cis-ascend-sandbox-ascend-lite-db-us-east-1-bucket-policy" {
+  bucket = aws_s3_bucket.expn-cis-ascend-sandbox-ascend-lite-db-us-east-1.id
+  policy = <<POLICY
+{
+    "Version": "2012-10-17",
+    "Id": "expn-cis-ascend-sandbox-ascend-lite-db-us-east-1-bucket-policy",
+    "Statement": [
+        {
+            "Sid": "1",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::${var.ascend-sandbox-prod-account-id}:root"
+            },
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-lite-db-us-east-1/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-lite-db-us-east-1"
+            ]
+        },
+        {
+            "Sid": "ReadOnlyAccess",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::${var.ascend-cecl-models-prod-account-id}:root", 
+                    "arn:aws:iam::227513596010:root",
+                    "arn:aws:iam::${var.ascend-sandbox-usaa-account-id}:root",
+                    "arn:aws:iam::178825016088:role/xref_writer",
+                    "arn:aws:iam::${var.ascend-citi-retail-dedicated-sb-account-id}:root",
+                    "arn:aws:iam::${var.ascend-cis-da-prod-account-id}:root",
+                    "arn:aws:iam::${var.ascend-cis-datalab-prod-account-id}:root",
+                    "arn:aws:iam::${var.ascend-mmsb-dev-account-id}:root",
+                    "arn:aws:iam::${var.ascend-cecl-dev-account-id}:root",
+                    "arn:aws:iam::${var.ascend-amex-dedicated-sb-account-id}:root",
+                    "arn:aws:iam::${var.ascend-sandbox-dev-account-id}:root",
+                    "arn:aws:iam::215308655391:root",
+                    "arn:aws:iam::${var.ascend-sandbox-prod-2-account-id}:root",
+                    "arn:aws:iam::124559216667:root"
+                ]
+            },
+            "Action": [
+                "s3:Get*",
+                "s3:List*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-lite-db-us-east-1/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-lite-db-us-east-1"
+            ]
+        },
+        {
+            "Sid": "DenyUnSecureCommunications",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-lite-db-us-east-1/*",
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "false"
+                }
+            }
+        },
+        {
+            "Sid": "Stmt1580420489814",
+            "Effect": "Deny",
+            "Principal": {
+                "AWS": [
+                    "${var.lending_point_data_role}",
+                    "arn:aws:iam::148831404783:role/11Test-Data-Read-Role"
+                ]
+            },
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-lite-db-us-east-1",
+            "Condition": {
+                "StringNotLike": {
+                    "s3:prefix": [
+                        "consumer",
+                        "consumer/*",
+                        "trade",
+                        "trade/*",
+                        "consumer_credit_inquiry",
+                        "consumer_credit_inquiry/*",
+                        "public_record",
+                        "public_record/*",
+                        "peer_group",
+                        "peer_group/*",
+                        "trended_trade",
+                        "trended_trade/*",
+                        "extended_trade",
+                        "extended_trade/*",
+                        "trade_link_key",
+                        "trade_link_key/*",
+                        "data_dictionary",
+                        "data_dictionary/*"
+                    ]
+                }
+            }
+        },
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "${var.lending_point_data_role}",
+                    "arn:aws:iam::148831404783:role/11Test-Data-Read-Role"
+                ]
+            },
+            "Action": [
+                "s3:List*",
+                "s3:Get*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-lite-db-us-east-1",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-ascend-lite-db-us-east-1/*"
+            ]
+        }
+    ]
+}
+POLICY
+}
+
+resource "aws_s3_bucket" "expn-cis-ascend-sandbox-clarity-db-us-east-1" {
+  bucket = "expn-cis-ascend-sandbox-clarity-db-us-east-1"
+  acl    = "private"
+  tags   = merge(local.module_tags, map("Name", "expn-cis-ascend-sandbox-clarity-db-us-east-1"))
+  logging {
+    target_bucket = var.aws_log_bucket
+    target_prefix = "logs/"
+  }
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        kms_master_key_id = aws_kms_key.expn-cis-ascend-sandbox-clarity-db-us-east-1-cmk.arn
+        sse_algorithm     = "aws:kms"
+      }
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "expn-cis-ascend-sandbox-clarity-db-us-east-1-bucket-policy" {
+  bucket = aws_s3_bucket.expn-cis-ascend-sandbox-clarity-db-us-east-1.id
+  policy = <<POLICY
+{
+    "Version": "2012-10-17",
+    "Id": "expn-cis-ascend-sandbox-clarity-db-us-east-1-bucket-policy",
+    "Statement": [
+        {
+            "Sid": "1",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::${var.ascend-sandbox-prod-account-id}:root"
+            },
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-clarity-db-us-east-1/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-clarity-db-us-east-1"
+            ]
+        },
+        {
+            "Sid": "ReadOnlyAccess",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::858664478982:role/machinify_iam_role",
+                    "arn:aws:iam::858664478982:role/858664478982-DA-Admin-Role",
+                    "arn:aws:iam::${var.ascend-citi-retail-dedicated-sb-account-id}:root",
+                    "arn:aws:iam::${var.ascend-amex-dedicated-sb-account-id}:root",
+                    "arn:aws:iam::858664478982:root",
+                    "arn:aws:iam::${var.ascend-sandbox-prod-2-account-id}:root",
+                    "arn:aws:iam::${var.ascend-mmsb-dev-account-id}:root"
+                ]
+            },
+            "Action": [
+                "s3:Get*",
+                "s3:List*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-clarity-db-us-east-1/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-clarity-db-us-east-1"
+            ]
+        },
+        {
+            "Sid": "AllowSantandar",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-Santander-Prod"]}:role/ascend-emr-instance-role",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-Santander-Prod"]}:role/ascend-applications-instance-role",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-WellsFargo-Prod"]}:role/ascend-applications-instance-role",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-WellsFargo-Prod"]}:role/ascend-emr-instance-role"
+                ]
+            },
+            "Action": [
+                "s3:Get*",
+                "s3:List*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-clarity-db-us-east-1/data_dictionary/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-clarity-db-us-east-1"
+            ]
+        },
+        {
+            "Sid": "DenyUnSecureCommunications",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-ascend-sandbox-clarity-db-us-east-1/*",
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "false"
+                }
+            }
+        },
+        {
+            "Sid": "AllowSantandar",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-Santander-Prod"]}:role/ascend-applications-instance-role",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-Santander-Prod"]}:role/ascend-emr-instance-role",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-WellsFargo-Prod"]}:role/ascend-applications-instance-role",
+                    "arn:aws:iam::${module.accounts.account_ids["EXPN-NA-CIS-WellsFargo-Prod"]}:role/ascend-emr-instance-role"
+                ]
+            },
+            "Action": [
+                "s3:List*",
+                "s3:Get*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-clarity-db-us-east-1/data_dictionary/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-clarity-db-us-east-1"
+            ]
+        }
+    ]
+}
+POLICY
+}
+
+resource "aws_s3_bucket" "expn-cis-ascend-sandbox-atg-db-us-east-1" {
+  bucket = "expn-cis-ascend-sandbox-atg-db-us-east-1"
+  acl    = "private"
+  tags   = merge(local.module_tags, map("Name", "expn-cis-ascend-sandbox-ath-db-us-east-1"))
+  logging {
+    target_bucket = var.aws_log_bucket
+    target_prefix = "logs/"
+  }
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        kms_master_key_id = aws_kms_key.expn-cis-ascend-sandbox-atg-db-us-east-1-cmk.arn
+        sse_algorithm     = "aws:kms"
+      }
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "expn-cis-ascend-sandbox-atg-db-us-east-1-bucket-policy" {
+  bucket = aws_s3_bucket.expn-cis-ascend-sandbox-atg-db-us-east-1.id
+  policy = <<POLICY
+{
+    "Version": "2012-10-17",
+    "Id": "expn-cis-ascend-sandbox-atg-db-us-east-1-bucket-policy",
+    "Statement": [
+        {
+            "Sid": "1",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::${var.ascend-sandbox-prod-account-id}:root"
+                ]
+            },
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-atg-db-us-east-1/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-atg-db-us-east-1"
+            ]
+        },
+        {
+            "Sid": "ReadOnlyAccess",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::${var.ascend-cecl-dev-account-id}:root"
+                ]
+            },
+            "Action": [
+                "s3:Get*",
+                "s3:List*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-atg-db-us-east-1/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-atg-db-us-east-1"
+            ]
+        },
+        {
+            "Sid": "DenyUnSecureCommunications",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-ascend-sandbox-atg-db-us-east-1/*",
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "false"
+                }
+            }
+        }
+    ]
+}
+POLICY
+}
+
+resource "aws_s3_bucket" "expn-cis-ascend-sandbox-galaxy-db-us-east-1" {
+  bucket = "expn-cis-ascend-sandbox-galaxy-db-us-east-1"
+  acl    = "private"
+  tags   = merge(local.module_tags, map("Name", "expn-cis-ascend-sandbox-galaxy-db-us-east-1"))
+  logging {
+    target_bucket = var.aws_log_bucket
+    target_prefix = "logs/"
+  }
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        kms_master_key_id = aws_kms_key.expn-cis-ascend-sandbox-galaxy-db-us-east-1-cmk.arn
+        sse_algorithm     = "aws:kms"
+      }
+    }
+  }
+  logging {
+    target_bucket = var.aws_log_bucket
+    target_prefix = "logs/"
+  }
+}
+
+resource "aws_s3_bucket_policy" "expn-cis-ascend-sandbox-galaxy-db-us-east-1-bucket-policy" {
+  bucket = aws_s3_bucket.expn-cis-ascend-sandbox-galaxy-db-us-east-1.id
+  policy = <<POLICY
+{
+    "Version": "2012-10-17",
+    "Id": "expn-cis-ascend-sandbox-galaxy-db-us-east-1-bucket-policy",
+    "Statement": [
+        {
+            "Sid": "1",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::${var.ascend-sandbox-prod-account-id}:root"
+                ]
+            },
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-galaxy-db-us-east-1/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-galaxy-db-us-east-1"
+            ]
+        },
+        {
+            "Sid": "ReadOnlyAccess",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::${var.ascend-amex-dedicated-sb-account-id}:root"
+                ]
+            },
+            "Action": [
+                "s3:Get*",
+                "s3:List*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-ascend-sandbox-galaxy-db-us-east-1/*",
+                "arn:aws:s3:::expn-cis-ascend-sandbox-galaxy-db-us-east-1"
+            ]
+        },
+        {
+            "Sid": "DenyUnSecureCommunications",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-ascend-sandbox-galaxy-db-us-east-1/*",
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "false"
+                }
+            }
+        }
+    ]
+}
+POLICY
+}

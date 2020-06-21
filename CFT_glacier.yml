@@ -1,0 +1,48 @@
+#Creates S3 bucket and retains it if stack is destroyed. Also, if the bucket exist, allows user to create new stack to update the policy.
+Description: Stack to create and manage s3 buckets
+Parameters:
+  MemberAccountNumber:
+    Description: AWS Account Number for Member Account
+    Type: String
+    MaxLength: 12
+    MinLength: 12
+    AllowedPattern: "[0-9]+"
+    Default: '595114674333'
+  pCreateS3Bucket:
+    Description: Set to false if the bucket already exist
+    Default: false
+    AllowedValues:
+      - false
+      - true
+    Type: String
+  pLifeCyclePolicySelection:
+    Type: String
+    Description: "policyone: move to glacier.Policytwo: move to deep archive. Policythree: policy to move to glacier and purge after"
+    Default: policyone
+    AllowedValues:
+      - policythree
+      - policytwo
+      - policyone
+  pS3BucketName:
+    Description: S3Bucket Name
+    Type: String
+    Default: 'expn-cis-account-review-dev-code'
+Conditions:
+  cIsAnewBuckett: !Equals [!Ref pCreateS3Bucket, true]
+  cIsAnewBucketf: !Equals [!Ref pCreateS3Bucket, false]
+Resources:
+  rpolicyone:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Condition: cIsAnewBucket
+    Properties:
+      BucketName: !Ref pS3BucketName
+      LifecycleConfiguration:
+        Rules:
+        - Id: GlacierRule
+          Prefix: policy1
+          Status: Enabled
+          ExpirationInDays: '3'
+          Transitions:
+            - TransitionInDays: '1'
+              StorageClass: GLACIER

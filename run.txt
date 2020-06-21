@@ -1,0 +1,678 @@
+"""
+This module is the entry point to run the QA Automation tool and makes call
+to all the possible funtionality provided by the tool.
+"""
+import argparse
+import logging
+import subprocess
+import sys
+import textwrap
+import csv
+import os
+import shutil
+import glob
+import re
+import copy
+
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+from multiprocessing import Pool
+from multiprocessing.dummy import Pool as ThreadPool
+
+import yaml
+
+from jsonify_csv_file import generate_json_from_csv
+from library.python.arf_splitter import get_arf_dict
+from library.python.compare_json_data import compare_response_to_expected
+from library.python.csv_util import get_csv_as_list_of_dictionary, get_headers_from_csv
+from library.python.file_util import create_directory_if_not_exist
+from datetime import datetime
+
+
+def read_unique_run(resource, is_apigee, dir_limit):
+    """
+    Reads for the unique run number for the API being run currently
+    :param resource: resource path of the API.
+    :return: unique run number
+    """
+    run_directories = None
+    pattern = 'run_(\d{14}$)'
+    path, timestamp = None, datetime.now()
+    if is_apigee:
+        base_path = os.path.join(resource, 'apigee-run', '')
+        run_directories = glob.glob(
+            base_path + 'run_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]')
+    else:
+        base_path = os.path.join(resource, 'non-apigee-run', '')
+        run_directories = glob.glob(
+            base_path + 'run_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]')
+    if run_directories:
+        dir_container = list()
+        for dir in run_directories:
+            dir_container.append(
+                datetime.strptime(re.search(pattern, os.path.basename(dir)).groups()[0],
+                                  '%m%d%Y%H%M%S'))
+
+        while len(dir_container) > dir_limit - 1:
+            oldest = min(dir_container)
+            shutil.rmtree(os.path.join(base_path, 'run_' + oldest.strftime('%m%d%Y%H%M%S')))
+            dir_container.remove(oldest)
+
+    current_timestamp = timestamp.strftime('%m%d%Y%H%M%S')
+
+    path = os.path.join(base_path, 'run_' + current_timestamp)
+    os.makedirs(path)
+
+    msg = "dir created as {0}".format(path)
+    f = open('file_for_jenkins_reference.txt', 'w+')
+    f.write(path)
+    logging.info(msg)
+    return path, current_timestamp
+
+
+def set_log(path):
+    """
+    Defines the log to be written for this module.
+    :param path: resource path for the api being run.
+    :return: None
+    """
+    log_path = Path(os.path.join("logs", path + "-request.log"))
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    logging.basicConfig(filename=log_path,
+                        filemode='w',
+                        format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                        datefmt='%H:%M:%S',
+                        level=logging.DEBUG)
+
+
+def regenerate_json_from_csv(csv_name, path):
+    """
+    calls the func that generates input request Jsons.
+    :param csv_name: input csv file name with test cases in it.
+    :param path: resource path being run for the api.
+    :return: None
+    """
+    subprocess.call("python jsonify_csv_file.py " + csv_name + " " + path, shell=True)
+
+
+def load_automation_tool_config(env):
+    """
+    Load environment config based on environment passed in command line
+    :param env: environment we need to test
+    :return: configuration_data, apg_user, apg_passwd
+    """
+    if env == 'DEV':
+        path = Path(os.path.join("CONFIG", "dev-env.yaml"))
+    elif env == 'QA':
+        path = Path(os.path.join("CONFIG", "qa-env.yaml"))
+    elif env == 'UAT':
+        path = Path(os.path.join("CONFIG", "uat-env.yaml"))
+    else:
+        sys.exit("Error: env='{0}' is provided, please provide a correct env(Case sensitive) "
+                 "value to run the tool".format(env))
+    with open(path, 'r') as config_file:
+        loaded_config = yaml.load(config_file)
+        config_setup = loaded_config['CISAPIHUB_SETUP']
+        apg_user = loaded_config['APIGEE_USER_NAME']
+        apg_passwd = loaded_config['APIGEE_PASSWORD']
+        report_backup_limit = loaded_config['REPORT_BACKUP_LIMIT']
+        parallel_processing = loaded_config['PARALLEL_PROCESSING']
+        parallel_threads = loaded_config['PARALLEL_THREADS']
+        configuration_data = config_setup[env]
+    return configuration_data, apg_user, apg_passwd, report_backup_limit, parallel_processing, parallel_threads
+
+
+def setup_environment(params, cfg_data):
+    """
+    Based on command line parameters setting up environment
+    :param params: paramameters passed in command line
+    :param cfg_data: configuration data from yml file
+    :return: cfg, RESOURCE_PATH
+    """
+    service_code, apigee_flag, arg_service, \
+    config_service_name = None, False, params.service, None
+    if arg_service.startswith('a-'):
+        apigee_flag = True
+        service_code = arg_service[2:]
+    else:
+        service_code = arg_service
+    for key in cfg_data:
+        if key.endswith('#' + service_code):
+            config_service_name = key
+            break
+    if not config_service_name:
+        print("Error: There is problem either with service name passed by user or issue with "
+              "yaml service name, plz check service passed as ='{0}' and service names "
+              "in config which is listed as = '{1}'".format(arg_service, cfg_data.keys()))
+        sys.exit("Error with Service Name!")
+    else:
+        api_base_path = cfg_data[config_service_name]['RESOURCE_PATH']
+        if not apigee_flag:
+            cfg_dict = cfg_data[config_service_name]['Non_APIGEE_SETUP']
+            cfg_dict['IS_APIGEE'] = apigee_flag
+        else:
+            cfg_dict = cfg_data[config_service_name]['APIGEE_SETUP']
+            cfg_dict['IS_APIGEE'] = apigee_flag
+    return cfg_dict, api_base_path
+
+
+def get_report_path(api_base_path, csv_name):
+    """
+    Get path to save test results
+    :param api_base_path: path having all API related resources
+    :param csv_name: file to be executed
+    :return: report path
+    """
+    report_path = os.path.join(api_base_path, "reports", csv_name)
+    Path(report_path).mkdir(parents=True, exist_ok=True)
+    return Path(report_path)
+
+
+def get_pass_fail_status(comparison_log_path):
+    """
+    Get pass fail status for ARF file comparison
+    :param comparison_log_path: comparison log path where status saved
+    :return: test execution status from file
+    """
+    execution_status_file = os.path.join(comparison_log_path, "status.txt")
+    if os.path.isfile(execution_status_file):
+        with open(execution_status_file) as file_obj:
+            return file_obj.read()
+    return "Incomplete Test Execution"
+
+
+def generate_arf_file(api_base_path, folder_name, output_path):
+    """
+    Generated ARF file from input file separated with ??? separator
+    :param api_base_path: path having all API related content
+    :param folder_name: folder name matching with file name
+    :param output_path: path to save arf output
+    :return:
+    """
+    expected_output_arf_file = os.path.join(api_base_path, "input", "expected-output", "arf",
+                                            folder_name + ".txt")
+    expected_output_arf_csv = os.path.join(api_base_path, "input", "expected-output", "arf",
+                                           folder_name + ".csv")
+    csv_record_list = list()
+    if os.path.isfile(expected_output_arf_file):
+        csv_record_list = get_arf_dict(expected_output_arf_file, "???")
+    elif os.path.isfile(expected_output_arf_csv):
+        csv_record_list = get_csv_as_list_of_dictionary(expected_output_arf_csv)
+    else:
+        print("------------------------------------------------------------")
+        print("Expected output arf file or folder does not exist." + os.linesep +
+              "Please make sure you have same name as input csv/input folder." +
+              os.linesep + "Also make sure that you have placed arf file correctly into " +
+              api_base_path + "/input/expected-output/arf/ ")
+        print("------------------------------------------------------------")
+    create_directory_if_not_exist(output_path)
+    for csv_dict in csv_record_list:
+        arf_output = csv_dict["response"]
+        file_content = arf_output.translate({ord('@'): '@' + os.linesep})
+        arf_file = os.path.join(output_path, csv_dict["testCase"] + ".txt")
+        with open(arf_file, 'w') as file_obj:
+            file_obj.write(file_content)
+
+
+def run_arf_vs_json_comparison(resource_base_path, folder_name, config):
+    """
+    Compare actual json output with expected arf output
+    :param resource_base_path: folder having API resources
+    :param folder_name: folder name matching with file name
+    :return:
+    """
+    # Reading results.csv
+    print("--------------------------)))))))))))))))")
+    print(config)
+    print("--------------------------)))))))))))))))")
+    report_path = str(get_report_path(config['RUN_PATH'], folder_name))
+    status_report_path = report_path
+    '''
+    if results.service.startswith("a-"):
+        status_report_path = os.path.join(status_report_path, "apigee-results.csv")
+    else:
+        status_report_path = os.path.join(status_report_path, "results.csv")
+    '''
+    status_report_path = os.path.join(status_report_path, config['OUT_FILE_NAME'])
+    if not os.path.isfile(status_report_path):
+        raise ValueError(
+            'Please rerun application as ARF comparison could be performed only after running for '
+            'status comparison and results.csv exists')
+    headers = get_headers_from_csv(status_report_path)
+    field_name = "ARF vs JSON Status"
+    headers.append(field_name)
+    csv_dict_list = get_csv_as_list_of_dictionary(status_report_path)
+    report_data = list()
+    input_path = os.path.join(config['RUN_PATH'], "requests", folder_name)
+    json_path = os.path.join(config['RUN_PATH'], "output", "json", folder_name)
+    arf_path = os.path.join(resource_base_path, "input", "expected-output", "arf", folder_name)
+    generate_arf_file(resource_base_path, folder_name, arf_path)
+
+    pool = ThreadPool(PARALLEL_THREADS)
+    resource_base_path_array = []
+    arf_path_array = []
+    csv_row_array = []
+    json_path_array = []
+    log_path_array = []
+    report_data_array = []
+    test_case_array = []
+    input_path_array = []
+    for csv_row in csv_dict_list:
+        test_case = csv_row["testCase"]
+        arf_file_path = os.path.join(arf_path, test_case + ".txt")
+        json_file_path = os.path.join(json_path, test_case + ".json")
+        log_path = os.path.join(report_path, "arf-comparison-reports", test_case, "")
+        input_json_path = os.path.join(input_path, test_case + ".json")
+
+        if csv_row["actualdHttpCd"] == "200" and os.path.isfile(arf_file_path) and os.path.isfile(
+                json_file_path) and os.path.isfile(input_json_path):
+            if PARALLEL_PROCESSING:
+                resource_base_path_array.append(resource_base_path)
+                arf_path_array.append(arf_path)
+                csv_row_array.append(csv_row)
+                json_path_array.append(json_path)
+                log_path_array.append(log_path)
+                report_data_array.append(report_data)
+                test_case_array.append(test_case)
+                input_path_array.append(input_path)
+            # Run Json Comparison
+            else:
+                arf_vs_json_script(resource_base_path, arf_path, csv_row,
+                               json_path, log_path, report_data, test_case, input_path)
+        else:
+            if not os.path.isfile(arf_path + "/" + csv_row["testCase"] + ".txt"):
+                csv_row[field_name] = "Arf Missing: " + csv_row["testCase"] + ".txt"
+            if not os.path.isfile(json_path + "/" + csv_row["testCase"] + ".json"):
+                csv_row[field_name] = "Json Missing: " + csv_row["testCase"] + ".json"
+            if csv_row["actualdHttpCd"] != "200":
+                csv_row[field_name] = "Failed HTTP Response"
+            report_data.append(csv_row)
+    if PARALLEL_PROCESSING:
+        pool.starmap(arf_vs_json_script, zip(resource_base_path_array, arf_path_array, csv_row_array,
+                json_path_array, log_path_array, report_data_array, test_case_array, input_path_array))
+        pool.close()
+        pool.join()
+    write_data_to_report(headers, report_data, status_report_path)
+
+
+def arf_vs_json_script(api_base_path, arf_path, csv_row, json_path, log_path, report_data,
+                       test_case, input_json_path):
+    """
+    Run ARF vs JSON robot file for each test case
+    :param api_base_path: path having all the api resources
+    :param arf_path: path having arf files
+    :param csv_row: row from input csv file
+    :param json_path: path to get input json
+    :param log_path: path to keep logs
+    :param report_data: save data to report
+    :param test_case: test case number to be run
+    :return:
+    """
+    command = "python -m robot.run -d " + log_path + " -v ARFFolder:" + arf_path + \
+              " -v JSONFolder:" + json_path + " -v REPORT_PATH:" + log_path + " -v testCase:" + \
+              test_case + " -v InputJSONFolder:" + input_json_path + \
+              " -n noncritical " + os.path.join(api_base_path, "arf_vs_json.robot")
+    print("---------Arf vs JSON Command-----------")
+    print(command)
+    print("---------------------------------------")
+    subprocess.call(command, shell=True)
+    report_html_path = os.path.join(log_path, "report.html")
+    status = get_pass_fail_status(log_path)
+
+    csv_row["ARF vs JSON Status"] = "=Hyperlink(\"file://\\" + os.path.abspath(
+        report_html_path) + "\", \"" + status + "\")"
+    report_data.append(csv_row)
+
+
+def write_data_to_report(headers, report_data, status_report_path):
+    """
+    Writing data to report file
+    :param headers: report headers
+    :param report_data: report content
+    :param status_report_path: path to save content
+    :return:
+    """
+    tempfile = NamedTemporaryFile(mode='w', delete=False, newline='')
+    with open(status_report_path, 'r') as csvfile, tempfile:
+        writer = csv.DictWriter(tempfile, fieldnames=headers)
+        writer.writeheader()
+        for row in report_data:
+            writer.writerow(row)
+    shutil.move(tempfile.name, status_report_path)
+
+
+def run_robot_script(params, config, csv_name):
+    """
+    Running robot script for sending post request and getting response
+    :param params:  Parameters passed in command line
+    :param config: configuration defined in yaml file
+    :param csv_name: file for which failed scenarios are executed
+    :return:
+    """
+    report_path = str(get_report_path(config['RUN_PATH'], csv_name))
+    log_config = copy.deepcopy(config)
+    log_config['APIGEE_PASSWORD'] = '########'
+    print(log_config)
+    variables = ' -v SERVER:' + config['SERVER'] + ' -v END_POINT:' + config['END_POINT'] + \
+                ' -v RESOURCE_PATH:' + config['RESOURCE_PATH'] + ' -v CSV_NAME:' + \
+                config['CSV_NAME'] + ' -v HEADERS_STRING:' + config['HEADERS'] \
+                + ' -v CSV_HEADER_PARAM_NAME_LIST:' + config['CSV_HEADER_PARAM_NAME_LIST'] \
+                + ' -v RUN_PATH:' + str(Path(config['RUN_PATH'])) + ' -v OUT_FILE_NAME:' + config[
+                    'OUT_FILE_NAME']
+    if params.json:
+        variables += ' -v RUN_WITH_ONLY_JSON:True'
+
+    if params.service.startswith('a-'):
+        apigee_variables = variables + ' -v APIGEE_AUTH_ENDPOINT:' + \
+                           config['APIGEE_AUTH_ENDPOINT'] + \
+                           ' -v APIGEE_HEADERS:' + \
+                           config['APIGEE_HEADERS'] + ' -v APIGEE_USER_NAME:' \
+                           + config['APIGEE_USER_NAME'] + ' -v APIGEE_PASSWORD:' + \
+                           config['APIGEE_PASSWORD'] + ' -v IS_APIGEE:True'
+        command = 'python -m robot.run -d ' + report_path + apigee_variables + \
+                  ' -n noncritical --removekeywords name:"Login" -t "Test With Input Json" testsuit '
+    else:
+        command = 'python -m robot.run  -d ' + report_path + variables + \
+                  ' -n noncritical -t "Test With Input Json" testsuit'
+    log_msg = "Command to run RF is: '{0}'".format(command)
+    passwd_match = re.search('-v APIGEE_PASSWORD:(.*) -v', log_msg)
+    if passwd_match:
+        passwd = passwd_match.groups()[0]
+        log_passwd = '#' * len(passwd)
+        logging.info(
+            re.sub('-v APIGEE_PASSWORD:.* -v', '-v APIGEE_PASSWORD:' + log_passwd + ' -v', log_msg))
+    else:
+        logging.info(log_msg)
+    subprocess.call(command, shell=True)
+
+
+def run_robot_script_for_failed_cases(params, config, csv_name):
+    """
+    Running test cases for only failed scenarios
+    :param params:  Parameters passed in command line
+    :param config: configuration defined in yaml file
+    :param csv_name: file for which failed scenarios are executed
+    :return:
+    """
+    report_path = str(get_report_path(config['RUN_PATH'], csv_name))
+    variables = ' -v SERVER:' + config['SERVER'] + ' -v END_POINT:' + \
+                config['END_POINT'] + \
+                ' -v RESOURCE_PATH:' + config['RESOURCE_PATH'] + \
+                ' -v CSV_NAME:' + config['CSV_NAME'] + \
+                ' -v HEADERS_STRING:' + config['HEADERS'] + \
+                ' -v CSV_HEADER_PARAM_NAME_LIST:' + \
+                config['CSV_HEADER_PARAM_NAME_LIST'] \
+                + ' -v RUN_PATH:' + Path(config['RUN_PATH']) + ' -v OUT_FILE_NAME:' + config[
+                    'OUT_FILE_NAME']
+
+    if params.service.startswith('a-'):
+        apigee_variables = variables + ' -v APIGEE_AUTH_ENDPOINT:' + \
+                           config['APIGEE_AUTH_ENDPOINT'] + \
+                           ' -v APIGEE_HEADERS:' + config['APIGEE_HEADERS'] + \
+                           ' -v APIGEE_USER_NAME:' + config['APIGEE_USER_NAME'] + \
+                           ' -v APIGEE_PASSWORD:' + config['APIGEE_PASSWORD'] + \
+                           ' -v IS_APIGEE:True'
+
+        command = 'python -m robot.run -d ' + report_path + apigee_variables + \
+                  ' -n noncritical --removekeywords name:"Login" -t "Retest With Failed Cases"  testsuit '
+    else:
+        command = 'python -m robot.run -d ' + report_path + variables + \
+                  ' -n noncritical -t "Retest With Failed Cases" testsuit'
+    log_msg = "Command to run RF is: '{0}'".format(command)
+    passwd_match = re.search('-v APIGEE_PASSWORD:(.*) -v', log_msg)
+    if passwd_match:
+        passwd = passwd_match.groups()[0]
+        log_passwd = '#' * len(passwd)
+        logging.info(
+            re.sub('-v APIGEE_PASSWORD:.* -v', '-v APIGEE_PASSWORD:' + log_passwd + ' -v', log_msg))
+    else:
+        logging.info(log_msg)
+    subprocess.call(command, shell=True)
+
+
+def get_summary_report(path, report_file, file_name_without_extension):
+    path = os.path.join(path, "reports")
+    path = os.path.join(path, file_name_without_extension)
+    path = os.path.join(path, report_file)
+    input_file = csv.DictReader(open(path))
+    total = 0
+    json_exec_pass_count = 0
+    json_vs_json_pass_count = 0
+    arf_vs_json_pass_count = 0
+
+    json_exec_fail_count = 0
+    json_vs_json_fail_count = 0
+    arf_vs_json_fail_count = 0
+
+    for row in input_file:
+        total = total + 1
+        json_execution_status = row["Success Status"]
+        if json_execution_status.find("PASS") >= 0:
+            json_exec_pass_count = json_exec_pass_count + 1
+        elif json_execution_status.find("FAIL") >= 0:
+            json_exec_fail_count = json_exec_fail_count + 1
+
+        json_vs_json_status = row["JSON vs JSON Status"]
+        if json_vs_json_status.find("PASS") >= 0:
+            json_vs_json_pass_count = json_vs_json_pass_count + 1
+        elif json_vs_json_status.find("FAIL") >= 0:
+            json_vs_json_fail_count = json_vs_json_fail_count + 1
+
+        if "ARF vs JSON Status" in row:
+            arf_vs_json_status = row["ARF vs JSON Status"]
+            if arf_vs_json_status.find("PASS") >= 0:
+                arf_vs_json_pass_count = arf_vs_json_pass_count + 1
+            elif arf_vs_json_status.find("FAIL") >= 0:
+                arf_vs_json_fail_count = arf_vs_json_fail_count + 1
+    html = "<table>" \
+           "<tr><th></th><th>Post request execution status</th>" \
+           "<th>JSON vs JSON comparison</th>" \
+           "<th>ARF vs JSON comparison</th></tr>"\
+           "<tr><th>PASS</th>" \
+           "<td>" + str(json_exec_pass_count) + "</td>" \
+           "<td>" + str(json_vs_json_pass_count) + "</td>" \
+           "<td>" + str(arf_vs_json_pass_count) + "</td></tr>" \
+           "<tr><th>FAIL</th>" \
+           "<td>" + str(json_exec_fail_count) + "</td>" \
+           "<td>" + str(json_vs_json_fail_count) + "</td>" \
+           "<td>" + str(arf_vs_json_fail_count) + "</td></tr>" \
+           "<tr><th>Not Executed</th>" \
+           "<td>" + str(total - (json_exec_pass_count + json_exec_fail_count)) + "</td>" \
+           "<td>" + str(total - (json_vs_json_pass_count + json_vs_json_fail_count)) + "</td>" \
+           "<td>" + str(total - (arf_vs_json_pass_count + arf_vs_json_fail_count)) + \
+           "</td></tr></table>"
+    f = open('execution_summary.html', 'w+')
+    f.write(html)
+    if(json_exec_fail_count > 0 or json_vs_json_fail_count > 0 or arf_vs_json_fail_count > 0):
+        sys.exit(1)
+
+
+def get_all_csv_files(api_base_path):
+    """
+    Method to get all CSV files from a resource path defined
+    :param api_base_path: path having all api related contents
+    :return: list of files
+    """
+    files = []
+    dir_path = Path(api_base_path + '/input/csv-resources')
+    for folders, sub_folders, file_name in os.walk(dir_path):
+        for name in file_name:
+            if name.lower().endswith(".csv"):
+                files.append(name)
+    print(str(files))
+    return files
+
+
+if __name__ == "__main__":
+    PARSER = argparse.ArgumentParser(prog='python run.py',
+                                     formatter_class=argparse.RawDescriptionHelpFormatter,
+                                     description=textwrap.dedent('''\
+    ...         We have multiple api's and for them following are service parameters:
+    ...         -------------------------------------------------------------------
+    ...         Credit Profile = cp
+    ...         Extended View Score = evs
+    ...         Extended View Attribute = eva
+    ...         Extended View Score and Attribute = evas
+    ...         Prequal Standard = ps
+    ...         Prequal Score Only = pso
+    ...         Inquiry Only = io
+    ...         Standard Instant Prescreen = sip
+    ...         Custom Instant Prescreen = cip
+    ...         Advanced Instant Prescreen = aip
+    ...         MLA Standalone = mlas
+    ...         Premier Attributes = pa
+    ...         Trended Attributes = ta
+    ...         Trended Data = td
+    ...         Pinning = pin
+    ...         Social Search = ss
+    ...         Address Search = as
+    ...         Address Update = au
+    ...         Healthcare Credit Profile = hcp
+    ...         Premier Trend3D Attributes = pt3da
+    ...         Employment Insight = ei    
+	...         TEC Credit Report = tec 
+    ...         Decision Service = ds
+	...         Connect Check = cc
+	...         Automotive Credit Profile = acp
+	...         Lite Report = lr
+    ...         ------- For APIGEE ------------------------------------------------
+    ...         Credit Profile = a-cp
+    ...         Extended View Score = a-evs
+    ...         Extended View Attribute = a-eva
+    ...         Extended View Score and Attribute = a-evas
+    ...         Prequal Standard = a-ps
+    ...         Prequal Score Only = a-pso
+    ...         Inquiry Only = a-io
+    ...         Standard Instant Prescreen = a-sip
+    ...         Custom Instant Prescreen = a-cip
+    ...         Advanced Instant Prescreen = a-aip
+    ...         MLA Standalone = a-mlas
+    ...         Premier Attributes = a-pa
+    ...         Trended Attributes = a-ta
+    ...         Trended Data = a-td
+    ...         Pinning = a-pin
+    ...         Social Search = a-ss
+    ...         Address Search = a-as
+    ...         Address Update = a-au
+    ...         Healthcare Credit Profile = a-hcp
+    ...         Premier Trend3D Attributes = a-pt3da
+    ...         Employment Insight = a-ei 
+    ...         TEC Credit Report = a-tec
+    ...         Decision Service = a-ds	
+	...         Connect Check = a-cc
+	...         Automotive Credit Profile = a-acp
+	...         Lite Report = a-lr
+	...         '''))
+
+    optional = PARSER._action_groups.pop()  # Edited this line
+    required = PARSER.add_argument_group('required arguments')
+    required.add_argument('-s', '--service', action='store', dest='service',
+                          help='Parameter required to identify api',
+                          required=True)
+
+    optional.add_argument('-re', action='store_true', dest='regenerate', default=False,
+                          help='Regenerate json from csv file')
+    optional.add_argument('-f', action='append', dest='files', default=[],
+                          help='List of files in resource')
+    required.add_argument('--env', action='store', dest='env', required=True,
+                          help='environment for which the tool is to run,'
+                               ' like, DEV/QA/UAT')
+    optional.add_argument('-arf', action='store_true', dest='arf', default=False,
+                          help='Perform arf comparison and update results file based on comparison')
+    optional.add_argument('-fa', action='store_true', dest='failed', default=False,
+                          help='Run Tests for Failed Scenarios')
+    optional.add_argument('-au', '--apigee_user', action='store', dest='apigee_user',
+                          help='APIGEE User Name for token generation')
+    optional.add_argument('-ap', '--apigee_password', action='store', dest='apigee_password',
+                          help='APIGEE Password for token generation')
+
+    PARSER._action_groups.append(optional)
+    results = PARSER.parse_args()
+
+    if results.env:
+        CONFIG_DATA, APIGEE_USER, APIGEE_PASSWD, REPORT_BACKUP_LIMIT, PARALLEL_PROCESSING, \
+            PARALLEL_THREADS = load_automation_tool_config(results.env)
+        cfg, RESOURCE_PATH = setup_environment(results, CONFIG_DATA)
+        if results.service.startswith('a-'):
+            if results.apigee_user and results.apigee_password:
+                cfg['APIGEE_USER_NAME'] = results.apigee_user
+                cfg['APIGEE_PASSWORD'] = results.apigee_password
+            else:
+                cfg['APIGEE_USER_NAME'] = APIGEE_USER
+                cfg['APIGEE_PASSWORD'] = APIGEE_PASSWD
+
+        set_log(RESOURCE_PATH)
+
+        RESOURCE_PATH = os.path.join('api-resources', RESOURCE_PATH)
+        path, current_timestamp = read_unique_run(RESOURCE_PATH, cfg['IS_APIGEE'],
+                                                  REPORT_BACKUP_LIMIT)
+
+        cfg['RUN_PATH'] = path
+        cfg['current_timestamp'] = current_timestamp
+        base_name = os.path.basename(RESOURCE_PATH)
+        report_file = base_name + '-apigee-report_' + \
+                      current_timestamp + '.csv' if cfg['IS_APIGEE'] else base_name + '-report_' + \
+                                                                          current_timestamp + '.csv'
+        cfg['RESOURCE_PATH'] = RESOURCE_PATH
+        cfg['OUT_FILE_NAME'] = report_file
+        log_cfg = copy.deepcopy(cfg)
+        log_cfg['APIGEE_PASSWORD'] = '########'
+        LOG_MSG = "Running for: env={0}, config={1}".format(results.env, log_cfg)
+        logging.info(LOG_MSG)
+        if not results.files or results.files[0].lower() == 'all':
+            results.files = get_all_csv_files(RESOURCE_PATH)
+            LOG_MSG = "To run for Files: '{0}'".format(results.files)
+            logging.info(LOG_MSG)
+        for file in results.files:
+            cfg['CSV_NAME'] = file
+            if file.lower().endswith('.csv'):
+                results.json = False
+                log_message = "Running for file = '{0}'".format(file)
+                logging.info(log_message)
+            else:
+                if results.regenerate:
+                    log_message = "argument for -f option= {0}, possibly it is a direcotry, and" \
+                                  "-re option does not work together".format(file)
+                    logging.error(log_message)
+                    sys.exit("argument for -f option= {0}, possibly it is a directory, and -re "
+                             "option does not work together".format(file))
+                else:
+                    log_message = "Running for json/non-csv = '{0}'".format(file)
+                    logging.info(log_message)
+                    results.json = True
+                    shutil.copytree(RESOURCE_PATH + '/input/' + file,
+                                    cfg['RUN_PATH'] + '/requests/' + file)
+            if results.failed:
+                log_message = "Running for failed cases for file passed as: '{0}' and resource " \
+                              "path = '{1}'".format(file, RESOURCE_PATH)
+                logging.info(log_message)
+                log_message = "Calling to generate input Json for file = '{}'".format(file)
+                logging.info(log_message)
+                generate_json_from_csv(file, RESOURCE_PATH, path)
+                file_name_without_extension = file.split('.', 1)[0]
+                run_robot_script_for_failed_cases(results, cfg, file.split('.', 1)[0])
+                compare_response_to_expected(RESOURCE_PATH,
+                                             file_name_without_extension, path, current_timestamp,
+                                             cfg['IS_APIGEE'])
+            else:
+                if results.regenerate:
+                    log_message = "Calling to generate input Json for file = '{}'".format(file)
+                    logging.info(log_message)
+                    generate_json_from_csv(file, RESOURCE_PATH, path)
+                else:
+                    log_message = "need to check if json files are present if yes then run script" \
+                                  "for json files or throw error for generating json first"
+                    logging.info(log_message)
+                file_name_without_extension = file.split('.', 1)[0]
+                log_message = "file name without extension: " \
+                              "= '{0}'".format(file_name_without_extension)
+                logging.info(log_message)
+                run_robot_script(results, cfg, file_name_without_extension)
+                compare_response_to_expected(RESOURCE_PATH,
+                                             file_name_without_extension, path, current_timestamp,
+                                             cfg['IS_APIGEE'])
+                if results.arf:
+                    run_arf_vs_json_comparison(RESOURCE_PATH, file_name_without_extension, cfg)
+        get_summary_report(path, report_file, file_name_without_extension)
+    else:
+        raise ValueError("Error: issue with parsing arguments, couldn't find env as an argument")

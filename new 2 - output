@@ -1,0 +1,123 @@
+{
+    "Version": "2012-10-17",
+    "Id": "S3BucketPolicyexpn-cis-account-review-dev-output",
+    "Statement": [
+        {
+            "Sid": "LocalEMRAccess",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::121922704398:role/LambdaAutomationRolealldev",
+                    "arn:aws:iam::121922704398:role/EMR_EC2_DefaultRolealldev"
+                ]
+            },
+            "Action": [
+                "s3:List*",
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-account-review-dev-output",
+                "arn:aws:s3:::expn-cis-account-review-dev-output/*"
+            ]
+        },
+        {
+            "Sid": "MapProdRedshiftRole",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::227011717743:role/expn-cis-redshift-all-copy-unload"
+            },
+            "Action": [
+                "s3:List*",
+                "s3:GetObject",
+                "s3:PutObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-account-review-dev-output",
+                "arn:aws:s3:::expn-cis-account-review-dev-output/*"
+            ]
+        },
+        {
+            "Sid": "STSToS3ProdInput",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::399127776771:user/GFT_S3_Access"
+            },
+            "Action": [
+                "s3:List*",
+                "s3:GetObject",
+                "s3:PutObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::expn-cis-account-review-dev-output",
+                "arn:aws:s3:::expn-cis-account-review-dev-output/*"
+            ],
+            "Condition": {
+                "IpAddress": {
+                    "aws:SourceIp": [
+                        "205.174.34.7/32",
+                        "167.107.191.217/32",
+                        "167.107.96.46/32"
+                    ]
+                }
+            }
+        },
+        {
+            "Sid": "DenyIncorrectEncryptionHeader",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::expn-cis-account-review-dev-output/*",
+            "Condition": {
+                "StringNotEquals": {
+                    "s3:x-amz-server-side-encryption": "AES256"
+                }
+            }
+        },
+        {
+            "Sid": "DenyUnEncryptedObjectUploads",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::expn-cis-account-review-dev-output/*",
+            "Condition": {
+                "Null": {
+                    "s3:x-amz-server-side-encryption": "true"
+                }
+            }
+        },
+        {
+            "Sid": "DenyNonSSLAccess",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-account-review-dev-output/*",
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "false"
+                }
+            }
+        },
+        {
+            "Sid": "RestrictToUsers",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::expn-cis-account-review-dev-output/*",
+            "Condition": {
+                "StringNotLike": {
+                    "aws:userId": [
+                        "121922704398",
+                        "AROARYYZI2QHFUQTEISOQ:*",
+                        "AROARYYZI2QHIZY7UPCPB:*",
+                        "AROARYYZI2QHGUQNLZCZ2:*",
+                        "AROARYYZI2QHEPUBHCVG4:*",
+                        "AROARYYZI2QHOJOWECKNH:*",
+                        "AIDAIJ5WAGO3FNYEJQEES"
+                    ]
+                }
+            }
+        }
+    ]
+}
