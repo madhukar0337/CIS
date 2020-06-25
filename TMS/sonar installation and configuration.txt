@@ -1,0 +1,72 @@
+sonar installation and configuration runbook
+=============================================
+##create sonar user and add to sudoers file
+
+##download sonarqube from official site in zip or use 
+
+##wget https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-6.7.6.zip to download directly from command line
+
+##unzip the file by unzip sonarqube-6.7.6.zip
+
+##copy the extracted directory to the /opt with the following command:
+
+##sudo cp -r sonarqube-6.7.6 /opt/sonarqube
+
+##sudo chown -R sonar:sonar /opt/sonarqube
+
+##configure SonarQube to run as a sonar user. You can do this with the following command:
+
+##sudo nano /opt/sonarqube/bin/linux-x86-64/sonar.sh
+
+##Create Systemd Service file for SonarQube and add below lines
+
+[Unit]
+Description=SonarQube service
+After=syslog.target network.target
+
+[Service]
+Type=forking
+
+ExecStart=/opt/sonarqube/bin/linux-x86-64/sonar.sh start
+ExecStop=/opt/sonarqube/bin/linux-x86-64/sonar.sh stop
+
+User=sonar
+Group=sonar
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
+##sudo systemctl enable sonar
+
+##sudo systemctl start sonar
+
+##u can check logs by command tail -f /opt/sonarqube/logs/sonar.log
+
+##access sonar by ip and default port 9000 and Provide the default administrator account username and password as admin / admin and click on the Log In button
+
+======================================================
+to add projects to soanr
+============================
+install git and maven
+
+clone any sample project by git clone http://builduser@192.168.0.116:7990/scm/chat-clp/chatakhsm.git
+
+goto project folder build where popm.xml is and execte below commands
+
+mvn clean && mcn clean install && mvn clean install -Dmaven.test.skip=true
+
+once build is succeess then execute below command to add project to sanor server
+
+mvn sonar:sonar-Dsonar.host.url=http://admin:admin@192.168.3.166:9000/
+
+========================================
+note
+======================
+only build get success then only we can add to sonar server
+
+
+
+
+
+

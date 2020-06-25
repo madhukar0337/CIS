@@ -1,0 +1,110 @@
+ANSIBLE
+
+ansible all -m ping
+
+- hosts: web
+#  become: true
+  tasks:
+  - name: Create directory
+    file: path=/root/madhu state=directory
+  - name: Create a file
+    file: path=/root/madhu/madhukar.txt state=touch
+  - name: write the data
+    blockinfile:
+     path: /root/madhu/madhukar.txt
+     block: |
+        Hi ,
+        Hello Everyone,
+        How are you all
+  - name: replace name
+    lineinfile:
+     path: /root/madhu/madhukar.txt
+     regexp: '^Hello'
+     line: Hello=enforcing
+  - synchronize:
+      src: /etc/ansible
+      dest: /root/madhu
+
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+---
+- hosts: web
+  tasks:
+  - name: Install httpd
+    yum:
+      name: httpd
+      state: present
+  - name: Start httpd
+    service:
+      name: httpd
+      state: started
+
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+---
+- hosts: web
+  tasks:
+  - name: Install java
+    yum:
+      name: java
+      state: present
+  - name: Install wget
+    yum:
+      name: wget
+      state: present
+  - name: Install tomcat
+    shell: wget http://mirrors.estointernet.in/apache/tomcat/tomcat-8/v8.5.42/bin/apache-tomcat-8.5.42.tar.gz
+  - name: untar
+    shell: tar -xvzf apache-tomcat-8.5.42.tar.gz
+  - name: start tomcat
+    shell: sh /root/apache-tomcat-8.5.42/bin/startup.sh
+  - name: download jenkins
+    shell: wget http://mirrors.jenkins.io/war-stable/latest/jenkins.war
+  - name: mv jenkins
+    shell: mv /root/jenkins.war /root/apache-tomcat-8.5.42/webapps/
+
+#####################################################################################
+
+PYTHON
+
+import os , subprocess , stat
+import webbrowser
+print("install the httpd")
+os.system("sudo yum groupinstall Development Tools -y")
+os.system("sudo yum install expat-devel pcre pcre-devel openssl-devel -y")
+os.system("sudo wget https://github.com/apache/httpd/archive/2.4.28.tar.gz -O /opt/httpd-2.4.28.tar.gz")
+os.system("sudo wget https://github.com/apache/apr/archive/1.6.2.tar.gz -O /opt/apr-1.6.2.tar.gz")
+os.system("sudo wget https://github.com/apache/apr-util/archive/1.6.0.tar.gz -O /opt/apr-util-1.6.0.tar.gz")
+os.chdir("/opt/")
+os.system("sudo tar -xzf httpd-2.4.28.tar.gz")
+os.system("sudo tar -xzf apr-1.6.2.tar.gz")
+os.system("sudo tar -xzf apr-util-1.6.0.tar.gz")
+os.system("pwd")
+print("Next we need to place apr and apr-util directory inside srclib directory which is located under HTTPD directory, and the name should be in apr and apr-util. Use the following command to move apr and apr-util directory to the respective directory.")
+os.system("sudo mv apr-1.6.2 httpd-2.4.28/srclib/apr")
+os.system("pwd")
+os.system("sudo mv apr-util-1.6.0 httpd-2.4.28/srclib/apr-util")
+os.system("ls -ltr")
+os.chdir("httpd-2.4.28")
+os.system("pwd")
+os.system("sudo ./buildconf")
+os.system("sudo ./configure --enable-ssl --enable-so --with-mpm=event --with-included-apr")
+os.system("sudo make")
+os.system("sudo make install")
+print(" show the httpd version")
+os.system("httpd -v")
+subprocess.call(['sudo', 'chmod', '0755', '/etc/profile.d/'])
+os.chdir("/etc/profile.d/")
+#f = open(r"/etc/profile.d/httpd.sh")
+os.system("sudo cp /home/srikanth/python/httpd.sh /etc/profile.d")
+#f.write("srikanth /usr/local/apache2/bin")
+#f.close()
+os.system("pwd")
+os.system("httpd -v")
+os.chdir("/etc/systemd/system/")
+os.system("sudo cp /home/srikanth/python/httpd.service /etc/systemd/system/")
+os.system("pwd")
+os.system("sudo systemctl daemon-reload")
+os.system("sudo systemctl start httpd")
+os.system("sudo systemctl enable httpd")
+webbrowser.open('http:192.168.3.2:80', new=2)
+

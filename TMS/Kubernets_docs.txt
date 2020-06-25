@@ -1,0 +1,302 @@
+Kubernetes installation steps
+================================
+
+
+Lets start with Master node and setup and configure before node install
+
+First thing to do is install Docker.In RHEL we will not be getting regular OpenSource Docker it comes with Docker-EE which we don’t want to use in this blog.So trick is to enable centos repo.
+
+1.To add centos yum repo. Run below command
+
+agv-master$ cat <<EOF > /etc/yum.repos.d/centos.repo
+[centos]
+
+name=CentOS-7
+
+baseurl=http://ftp.heanet.ie/pub/centos/7/os/x86_64/
+
+enabled=1
+
+gpgcheck=1
+
+gpgkey=http://ftp.heanet.ie/pub/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
+
+#additional packages that may be useful
+
+[extras]
+
+name=CentOS-$releasever - Extras
+
+baseurl=http://ftp.heanet.ie/pub/centos/7/extras/x86_64/
+
+enabled=1
+
+gpgcheck=0
+
+EOF
+
+2. As a standard religious practice run yum update and then install docker
+
+agv-master$ yum -y update 
+agv-master$ yum -y install docker
+agv-master$ systemctl enable docker
+agv-master$ systemctl start docker
+
+3. Now time to install Kubernetes packages, we need yum repo from google Also disable selinux as docker uses cgroups and other lib which selinux falsely treats as threat.
+
+agv-master$ cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+
+[kubernetes]
+
+name=Kubernetes
+
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+
+enabled=1
+
+gpgcheck=1
+
+repo_gpgcheck=1
+
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+
+EOF
+
+agv-masrter$ setenforce 0
+
+agv-master$ vi /etc/selinux/config
+     SELINUX=permissive ##Change if it is enforceing
+
+agv-master$ yum -y install kubelet kubeadm kubectl
+          $ yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+
+agv-master$ systemctl start kubelet
+
+agv-master$ systemctl enable kubelet
+
+4. Con-grates you installed K8 and now some hacks and config’s to enable cluster.
+
+agv-master$ cat <<EOF >  /etc/sysctl.d/k8s.conf
+
+net.bridge.bridge-nf-call-ip6tables = 1
+
+net.bridge.bridge-nf-call-iptables = 1
+
+EOF
+
+agv-master$ sysctl --system
+
+agv-master$ echo 1 > /proc/sys/net/ipv4/ip_forward
+
+
+agv-master$  vim /etc/fstab  
+
+#/dev/mapper/centos-swap swap                    swap    defaults        0 0
+
+
+agv-master$ swapoff -a
+
+
+
+5. Configure and Enable Networking to the cluster.
+
+agv-master$ kubeadm init --pod-network-cidr=10.244.0.0/16
+            kubeadm init --apiserver-advertise-address=192.168.2.167 --pod-network-cidr=10.244.0.0/16  --ignore-preflight-errors=cri
+
+----Output-of above command-------
+ kubeadm join 192.168.2.167:6443 --token i9wlse.lx2ako0clxft1nij --discovery-token-ca-cert-hash sha256:bd6f285fa1b18ed393f9d4980976ab53849330d3496cba71257e5c9c9a7bdae3
+
+  kubeadm join 192.168.2.167:6443 --token arqme7.mm7cypxjcvv7grcr --discovery-token-ca-cert-hash sha256:25a6db39817c5cb2f24a56e1deb06b45943186bbde2c4eea0fbcd71189a2d90b
+
+ kubeadm join 192.168.2.167:6443 --token f33de4.8zhlrr5novdngoim --discovery-token-ca-cert-hash sha256:f49dadb2d010614a7e0472109248761b67308bede416f36b797bb4f18f9e42f5
+
+
+
+kubeadm join 192.168.2.167:6443 --token ehj5f0.wo5t1f9wkqddvexf --discovery-token-ca-cert-hash sha256:527cd6689ae395ae8da0c030d36fab56c8280c8834c3c3bd8d79202d3051d3da
+
+
+
+
+
+agv-master$ kubectl get nodes
+NAME                      STATUS     ROLES       AGE       VERSION
+
+js-master.js.com          NotReady   master      17h       v1.11.1
+
+6. Run these commands as regular user to setup your profile and configure cluster. Also make note of token which will be used to configure nodes.
+
+ec2user@agv-master$ mkdir -p $HOME/.kube
+ec2user@agv-master$ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+
+ec2user@agv-master$ sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+Now we will enable Kubernetes cluster and will use flannel to get the config in yaml. And this should be run only on Master node
+ $ kubectl apply -f https://docs.projectcalico.org/v3.3/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml
+$ kubectl apply -f https://docs.projectcalico.org/v3.3/getting-started/kubernetes/installation/hosted/kubernetes-datastore/calico-networking/1.7/calico.yaml
+
+                             (or)
+$ export kubever=$(kubectl version | base64 | tr -d '\n')
+$ kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$kubever"
+
+ec2user@agv$ kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.9.1/Documentation/kube-flannel.yml
+
+Verify the Cluster with below command
+
+ec2user@agv$ kubectl get nodes
+NAME                      STATUS     ROLES     AGE       VERSION
+
+js-master.js.com          Ready      master    17h       v1.11.1
+
+This means My Master node is successfully running and I am ready to join nodes to the cluster.
+
+Lets add one node to this cluster. You should have one instance/server and follow 1–4 steps on the new server which is called node.
+
+7. After finishing 1–4 steps on the nod one last step will be run the notes which you made note during master setup. This step is to run on node to get registered with Master
+
+agv$kubeadm join 192.168.2.167:6443 --token jwqgre.ays5io7jusjls100 --discovery-token-ca-cert-hash sha256:6cdc7cdc3a1adc4a05dfed15e70230161a5566fb5238e1d43ab7685094ffd905
+
+## Run below command on Master Node #####
+agv$ kubectl get nodes
+NAME                         STATUS    ROLES     AGE       VERSION
+ip-10-0-0-139.vpc.internal   Ready     <none>    25s       v1.11.1
+ip-10-0-2-203.vpc.internal   Ready     master    17h       v1.11.1
+
+Congratulations!! now you are all set. You have Master and a node. Now you can start playing with creating pods,deployments,namespaces etc.. Also I am planning to cover these in my upcoming blog posts.
+
+
+
+
+
+- Testing Create First Pod
+
+In this step, we will do a test by deploying the Nginx pod to the kubernetes cluster. A pod is a group of one or more containers with shared storage and network that runs under Kubernetes. A Pod contains one or more containers, such as Docker container.
+
+Login to the 'k8s-master' server and create new deployment named 'nginx' using the kubectl command.
+
+kubectl create deployment nginx --image=nginx
+
+To see details of the 'nginx' deployment sepcification, run the following command.
+
+kubectl describe deployment nginx
+
+And you will get the nginx pod deployment specification.
+
+Next, we will expose the nginx pod accessible via the internet. And we need to create new service NodePort for this.
+
+Run the kubectl command below.
+
+kubectl create service nodeport nginx --tcp=80:80
+
+Make sure there is no error. Now check the nginx service nodeport and IP using the kubectl command below.
+
+kubectl get pods
+kubectl get pods -o wide --all-namespaces
+
+kubectl get svcs
+
+kubectl get csr
+
+
+
+kubectl create -f <yaml filename>
+
+
+if you want run custom docker images we need to some configurtion.
+$vim /etc/docker/daemon.json 
+
+{
+  "insecure-registries": [
+   
+    "192.168.2.171:8081",
+    "192.168.2.171:8082",
+    "192.168.2.171:8083"
+  ],
+  "disable-legacy-registry": true
+}
+
+  $ docker login -u admin -p admin123 192.168.2.171:8082
+  $ docker login -u admin -p admin123 192.168.2.171:8083
+
+ $ vim docker/config.json
+{
+	"auths": {
+		"192.168.2.171:8082": {
+			"auth": "YWRtaW46YWRtaW4xMjM="
+		},
+		"192.168.2.171:8083": {
+			"auth": "YWRtaW46YWRtaW4xMjM="
+		},
+		
+	},
+	"HttpHeaders": {
+		"User-Agent": "Docker-Client/18.06.3-ce (linux)"
+	}
+  $ cd .docker # cp config.json /var/lib/kubelet/
+
+
+
+
+The connection to the server 192.168.2.167:6443 was refused - did you specify the right host or port?
+    kubeadm reset
+    sudo -i
+    swapoff -a
+    exit
+    strace -eopenat kubectl version
+
+How do we check the how many ports is running?
+ $lsof -i
+
+How to completely uninstall kubernetes ?
+kubeadm reset
+sudo yum autoremove kubeadm kubectl kubelet kubernetes-cni kube*   
+sudo yum autoremove  
+sudo rm -rf ~/.kube
+
+
+ERROR: Trying to connect to API Server "192.168.2.167:6443"
+The issue is that you have a firewall running on your master node that should be disabled. It’s blocking incoming traffic.
+systemctl stop firewalld
+and it will be fine.
+
+
+check the logs of kubelet
+$ journalctl -xeu kubelet
+
+Unable to see join nodes in Kubernetes master
+$kubectl get csr
+
+
+
+How to push a docker image to a private repository ?
+
+You need to tag your image correctly first with your registryhost:
+
+docker tag [OPTIONS] IMAGE[:TAG] [REGISTRYHOST/][USERNAME/]NAME[:TAG]
+Then docker push using that same tag.
+
+docker push NAME[:TAG]
+Example:
+
+docker tag 518a41981a6a myRegistry.com/myImage
+docker push myRegistry.com/myImage
+
+example 
+
+docker login -u admin -p admin123 192.168.2.171:8083 (for login )
+docker tag nginx-image:latest 192.168.2.171:8083/nginx-image:latest (taging the image)
+docker push 192.168.2.171:8083/nginx-image:latest (for pushing )
+
+
+
+systemctl status kubelet
+● kubelet.service - kubelet: The Kubernetes Node Agent
+   Loaded: loaded (/etc/systemd/system/kubelet.service; enabled; vendor preset: disabled)
+  Drop-In: /etc/systemd/system/kubelet.service.d
+           └─10-kubeadm.conf
+   Active: activating (auto-restart) (Result: exit-code) since Tue 2018-07-17 11:39:26 +07; 1s ago
+     Docs: http://kubernetes.io/docs/
+  Process: 1869 ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS (code=exited, status=255)
+ Main PID: 1869 (code=exited, status=255)
+
+solution is here :http://kb.cloudblue.com/en/132920
+

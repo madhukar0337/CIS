@@ -1,0 +1,88 @@
+FROM tomcat
+MAINTAINER ashok
+RUN yum update && yum -y upgrade
+WORKDIR /usr/local/tomcat
+COPY tomcat-users.xml /usr/local/tomcat/conf/tomcat-users.xml
+COPY context.xml /usr/local/tomcat/webapps/manager/META-INF/context.xml
+EXPOSE 8080
+
+
+
+
+
+From tomcat:8-jre8
+ADD hello-world.war /usr/local/tomcat/webapps
+EXPOSE 8080
+CMD ["catalina.sh", "run"]
+
+
+
+
+
+- hosts: test-servers
+  remote_user: madhu
+  become: true
+  vars:
+    project_root: /var/www/html
+  tasks:  
+  - name: Install Apache Webserver
+    yum: pkg=httpd state=latest
+  - name: Place the index file at project root
+    copy: src=index.html dest={{ project_root }}/index.html owner=apache group=apache mode=0644
+  - name: Enable Apache on system reboot
+    service: name=httpd enabled=yes
+    notify: restart apache
+  handlers:
+  - name: restart apache
+    service: name=httpd state=restarted
+
+
+
+
+
+
+az aks nodepool add \
+    --resource-group myResourceGroup \
+    --cluster-name master \
+    --name mynodepool \
+    --node-count 2
+
+az acs kubernetes browse -g myresourcegroup -n master
+
+
+
+firewall-cmd --permanent --zone=public --add-port=8001/tcp 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+az aks get-credentials --resource-group aksrg --name kubernet-cluster
+
+az aks browse --resource-group aksrg --name kubernet-cluster
+
+kubectl create clusterrolebinding kubernetes-dashboard --clusterrole=cluster-admin --serviceaccount=kube-system:kubernetes-dashboard
+
+
+
+
+
+
+

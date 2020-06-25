@@ -1,0 +1,217 @@
+1.How do you handle Continuous Integration and Continuous Delivery in AWS Devops?
+
+ans)--The AWS Developer Tools help you securely store and version your application is source code and automatically build, test, and deploy your application to AWS or your on-premises environment.Start with AWS CodePipeline to build a continuous integration or continuous delivery workflow that uses AWS CodeBuild, AWS CodeDeploy, and other tools, or use each service separately.
+
+2. What is AWS CodePipeline in AWS Devops?
+
+A) AWS CodePipeline is a continuous integration and continuous delivery service for fast and reliable application and infrastructure updates. CodePipeline builds, tests, and deploys your code every time there is a code change, based on the release process models you define. This enables you to rapidly and reliably deliver features and updates.
+
+3.What is AWS CodeBuild in AWS Devops?
+
+A) AWS CodeBuild is a fully managed build service that compiles source code, runs tests, and produces software packages that are ready to deploy. With CodeBuild, you don’t need to provision, manage, and scale your own build servers. CodeBuild scales continuously and processes multiple builds concurrently, so your builds are not left waiting in a queue
+
+4.What is Amazon Elastic Container Service in AWS Devops?
+
+Answer # Amazon Elastic Container Service (ECS) is a highly scalable, high performance container management service that supports Docker containers and allows you to easily run applications on a managed cluster of Amazon EC2 instances.
+
+5.What is AWS Lambda in AWS Devops?
+
+Answer # AWS Lambda lets you run code without provisioning or managing servers. With Lambda, you can run code for virtually any type of application or backend service – all with zero administration. Just upload your code and Lambda takes care of everything required to run and scale your code with high availability.
+
+6.What is CodeCommit in AWS Devops?
+
+Answer # AWS CodeCommit is a fully-managed source control service that makes it easy for companies to host secure and highly scalable private Git repositories. CodeCommit eliminates the need to operate your own source control system or worry about scaling its infrastructure. You can use CodeCommit to securely store anything from source code to binaries, and it works seamlessly with your existing Git tools.
+
+7.What are the benefits of AWS CodeBuild in AWS Devops?
+
+Answer # AWS CodeBuild is a fully managed build service that compiles source code, runs tests, and produces software packages that are ready to deploy. With CodeBuild, you don't need to provision, manage, and scale your own build servers.
+
+CodeBuild scales continuously and processes multiple builds concurrently, so your builds are not left waiting in a queue. You can get started quickly by using prepackaged build environments, or you can create custom build environments that use your own build tools. With CodeBuild, you are charged by the minute for the compute resources you use.
+
+8.What is Amazon S3 in AWS Devops?
+
+Answer # Amazon Simple Storage Service (Amazon S3) is object storage with a simple web service interface to store and retrieve any amount of data from anywhere on the web.
+
+9.What is Amazon RDS in AWS Devops?
+
+Answer # Amazon Relational Database Service (Amazon RDS) makes it easy to set up, operate, and scale a relational database in the cloud.
+
+10. What are the benefits of AWS CodeDeploy in AWS Devops?
+
+Answer # AWS CodeDeploy is a service that automates software deployments to a variety of compute services including Amazon EC2, AWS Lambda, and instances running on-premises.
+
+AWS CodeDeploy makes it easier for you to rapidly release new features, helps you avoid downtime during application deployment, and handles the complexity of updating your applications.
+
+11.How can you use CodeBuild to automate your release process?
+
+Answer # Yes. CodeBuild is integrated with AWS CodePipeline. You can add a build action and set up a continuous integration and continuous delivery process that runs in the cloud.
+
+12.What is a build project in AWS Devops?
+
+Answer # A build project is used to define how CodeBuild will run a build. It includes information such as where to get the source code, which build environment to use, the build commands to run, and where to store the build output. A build environment is the combination of operating system, programming language runtime, and tools used by CodeBuild to run a build.
+
+13.How do you configure a build project in AWS Devops?
+
+Answer # A build project can be configured through the console or the AWS CLI. You specify the source repository location, the runtime environment, the build commands, the IAM role assumed by the container, and the compute class required to run the build. Optionally, you can specify build commands in a buildspec.yml file
+
+14. Which source repositories does CodeBuild support in AWS Devops?
+
+Answer # CodeBuild can connect to AWS CodeCommit, S3, and GitHub to pull source code for builds.
+
+15.How can you debug a past build failure in AWS CodeBuild?
+
+Answer # You can debug a build by inspecting the detailed logs generated during the build run.
+
+16. How will you access the data on EBS in AWS ?
+
+Elastic block storage as the name indicates provides persistent, highly avaialble and high performance block level storage that can be attached to a running EC2 instance. The storage can formatted and mounted as a file system or the raw storage can be accessed directly.
+
+17. What is the boot time for an instance store backed instance ?
+The boot time for an Amazon Instance Store -Backed AMI is usually less than 5 minutes.
+
+16.Is it possible to vertically scale on an Amazon Instance?  If yes, how ?
+
+Following are the steps to scale an Amazon Instance vertically .
+Spin up a larger Amazon instance than the existing one.
+Pause the exisiting instance to remove the root ebs volume from the server  and discard.
+Stop the live running instance and detach its root volume.
+Make a note of the unique device ID and attach that root volume to the new server.
+Start the instance again
+
+17.What is the total number of buckets that can be created in AWS by default ?
+
+100 buckets can be created in each of the AWS accounts. If additional buckets are required, increase the bucket limit by submitting a service limit increase.
+
+18.How many EC2 instances can be used in a VPC ?
+
+There is a limit of running up to a total of 20 on-demand instances across the instance family , you can purchase 20 reserved instances and request spot instances as per your dynamic spot limit region.
+
+19. Will you use encryption for S3 ?
+
+It is better to consider encryption for sensitive data on S3 as it is a proprietary technology.
+
+20.How can you send request to Amazon S3 ?
+
+Using the REST API or the AWS SDK wrapper libraries which wrap the underlying Amazon S3 REST API.
+
+21.How will you bind the user session with a specific instance in ELB (Elastic Load Balancer) ?
+This can be achieved by enabling Sticky Session.
+
+22.Can you run multiple websites on an EC2 server using a single IP address?
+
+More than one elastic IP is required to run multiple websites on EC2.
+
+23.What happens when you reboot an EC2 instance?
+Rebooting an instance is just similar to rebooting a PC. You do not return to image’s original state, however, the contents of the hard disk are same as before the reboot.
+
+24.What happens when you launch instances in Amazon VPC ?
+
+Each instance has a default IP address when the instance is launched in Amazon VPC. This approach is considered ideal when you need to connect cloud resources with the data centers.
+
+25. Explain what is S3?
+
+S3 stands for Simple Storage Service. You can use S3 interface to store and retrieve any amount of data, at any time and from anywhere on the web.  For S3, the payment model is pay as you go.
+
+26.Mention what is the relation between an instance and AMI?
+
+From a single AMI, you can launch multiple types of instances.  An instance type defines the hardware of the host computer used for your instance. Each instance type provides different compute and memory capabilities.  Once you launch an instance, it looks like a traditional host, and we can interact with it as we would with any computer.
+
+27. How can you send request to Amazon S3?
+
+Amazon S3 is a REST service, you can send request by using the REST API or the AWS SDK wrapper libraries that wrap the underlying Amazon S3 REST API.
+
+28.What is an auto-scaling and what are the components?
+
+Answer: Auto scaling allows you to automatically scale-up and scale-down the number of instances depending on the CPU utilization or memory utilization. There are 2 components in Auto scaling, they are Auto-scaling groups and Launch Configuration.
+
+29.What is an AMI?
+
+Answer: AMI stands for Amazon Machine Image. AMI is a template that contains the software configurations, launch permission and a block device mapping that specifies the volume to attach to the instance when it is launched.
+
+30.What is Cloudwatch?
+
+Answer: Cloudwatch is a monitoring tool that you can use to monitor your various AWS resources. Like health check, network, Application, etc.
+
+ 31.What is glacier?
+
+Answer: Glacier is the back up or archival tool that you use to back up your data in S3.
+
+32.What are roles?
+
+Answer: Roles are used to provide permissions to entities that you trust within your AWS account. Roles are users in another account. Roles are similar to users but with roles you do not need to create any username and password to work with the resources.
+
+33.What is VPC?
+
+Answer: VPC stands for Virtual Private Cloud. VPC allows you to easily customize your networking configuration. VPC is a network that is logically isolated from other network in the cloud. It allows you to have your own IP address range, subnets, internet gateways, NAT gateways and security groups
+
+34.What is VPC peering connection?
+
+Answer: VPC peering connection allows you to connect 1 VPC with another VPC. Instances in these VPC behave as if they are in the same network.
+
+35.What are NAT gateways?
+
+Answer: NAT stands for Network Address Translation. NAT gateways enables instances in a private subnet to connect to the internet but prevent the internet from initiating a connection with those instances
+
+36.How can you control the security to your VPC?
+
+Answer: You can use security groups and NACL (Network Access Control List) to control the security to your VPC.
+
+37.What are the database types in RDS?
+
+Answer: Following are the types of databases in RDS,
+Aurora
+Oracle
+MYSQL server
+Postgresql
+MariaDB
+SQL server
+
+38.What are the types of load balancers in EC2?
+
+Answer: There are 3 types of load balancers,
+Application load balancer
+Network load balancer
+Classic load balance
+
+39.What is and ELB?
+Answer: ELB stands for Elastic Load balancing. ELB automatically distributes the incoming application traffic or network traffic across multiple targets like EC2, containers, IP addresses.
+
+40.What are the benefits of auto scaling?
+Answer: Following are the benefits of auto scaling
+Better fault tolerance
+Better availability
+Better cost management
+
+41.What are shared AMI is?
+
+Answer: Shared AMI is are the AMI that are created by other developed and made available for other developed to use.
+Is it possible to reduce a ebs volume?
+
+Answer: no it is not possible, we can increase it but not reduce them.
+
+42.When I try to launch an ec2 instance i am getting Service limit exceed, how to fix the issue?
+
+Answer: By default AWS offer service limit of 20 running instances per region, to fix the issue we need to contact AWS support to increase the limit based on the requirement
+You have launched a Linux instance in AWS EC2. While configuring security group, you
+
+43.Have selected SSH, HTTP, HTTPS protocol. Why do we need to select SSH?
+
+Answer: To verify that there is a rule that allows traffic from EC2 Instance to your computer
+
+44.What are the different types of cloud services?
+
+Ans. Software as a Service (SaaS), Data as a Service (DaaS), Platform as a Service (PaaS), and Infrastructure as a Service (IaaS).
+
+45.What is AWS Lambda?
+
+Ans. AWS Lambda is a compute service that lets you run code in the AWS Cloud without provisioning or managing servers.
+
+ 
+
+
+
+
+
+
+
+
